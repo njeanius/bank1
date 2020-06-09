@@ -1,0 +1,328 @@
+---
+title: "Project_JW"
+author: "Jean Wills"
+date: "5/27/2020"
+output:
+  word_document: default
+    df_print: paged
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Project: Portuguese Bank Marketing Data
+
+# Step 1: install the packages required
+
+```{r}
+# install.packages("psych")
+# install.packages("rJava")
+# install.packages("RWeka")
+# install.packages("plyr")
+# install.packages("GGally")
+# install.packages("ggplot2")
+# install.packages("reshape2")
+# install.packages("caret")
+```
+
+# Step 2: read the data and look at the data structure and data summary
+
+```{r}
+# setwd("~/Users/jeanwills/Desktop/CKME136/")
+BM <- read.csv("/Users/jeanwills/Desktop/CKME136/bank_full.csv", header=T, sep = ";", stringsAsFactors = T, na.strings = "NA")
+# look at the data structure 
+BM_mini <- read.csv("/Users/jeanwills/Desktop/CKME136/bank.csv", header=T, sep = ";", stringsAsFactors = T, na.strings = "NA")
+#str(BM)
+# let's check number of complete cases for no data missing at all -> no missing data!
+sum(complete.cases(BM))
+```
+
+# step 2 - Look at the summary of bank data
+
+```{r}
+summary(BM)
+# we see that 7 attributes are numeric and the rest are character
+# we will come back to this and change the classes where required
+```
+
+# Step 3a: plot the boxplots of the numeric data
+
+```{r}
+# age has outliers above ~70
+par(mfrow=c(1,4))
+boxplot(BM$age, main = "Client's age")
+# balance has a large number of outliers above Q3
+boxplot(BM$balance, main = "Balance")
+# day has a large number of outliers above Q3
+boxplot(BM$day, main = "day called on")
+# duration has a large number of outliers above Q3
+boxplot(BM$duration, main = "call duration (sec)")
+```
+
+# Step 3b
+
+```{r}
+par(mfrow=c(1,3))
+# camapign has a large number of outliers above the Q3
+boxplot(BM$campaign, main = "Boxplot of campaign")
+# pdays has a VERY large number of outliers above Q3
+boxplot(BM$pdays, main = "Boxplot of pdays")
+# duration has a large number of outliers above Q3
+boxplot(BM$previous, main = "Boxplot of previous")
+```
+
+# Step 4a: plot histograms to reveal skewness / normality
+
+```{r}
+# age looks skewed right
+par(mfrow=c(1,4))
+hist(BM$age, main = "Histogram of Age", breaks = 5)
+# balance is skewed right
+hist(BM$balance, main = "Histogram of Balance", breaks = 5)
+# day seems ok
+hist(BM$day, main = "Histogram of the day of the month called on", breaks = 10)
+# duration is skewed right
+hist(BM$duration, main = "Histogram of call duration", breaks = 5)
+# campaign is skewed right - most data is in 1 day
+```
+
+# Step 4b
+
+```{r}
+par(mfrow=c(1,3))
+# campaign skewed right
+hist(BM$campaign, main = "Histogram of campaign", breaks = 5)
+# pdays skewed right
+hist(BM$pdays, main = "Histogram of pdays", breaks = 5)
+# previous skewed right
+hist(BM$previous, main = "Histogram of previous", breaks = 5)
+```
+
+
+# Step 5a: Q-Q plots
+
+```{r}
+par(mfrow=c(1,2))
+qqnorm(BM$age, main = "Norm Q-Q plot of Age")
+qqline(BM$age)
+qqnorm(BM$balance, main = "Norm Q-Q plot of balance")
+qqline(BM$balance)
+```
+
+# Step 5b
+
+```{r}
+par(mfrow=c(1,2))
+qqnorm(BM$day, main = "Norm Q-Q plot of day")
+qqline(BM$day)
+qqnorm(BM$duration, main = "Norm Q-Q plot of duration")
+qqline(BM$duration)
+```
+
+# Step 5c
+
+```{r}
+par(mfrow=c(1,3))
+qqnorm(BM$campaign, main = "Norm Q-Q plot of campaign")
+qqline(BM$campaign)
+qqnorm(BM$pdays, main = "Norm Q-Q plot of pdays")
+qqline(BM$pdays)
+qqnorm(BM$previous, main = "Norm Q-Q plot of previous")
+qqline(BM$previous)
+```
+
+# Step 6: Shapiro Tests for Normality on numeric data
+IF p<0.05 then the numeric data is not normal and significant
+Shapiro requires dataset size under 5,000 so using BM_mini version
+# --- All numeric attributes are NOT normal
+
+```{r}
+shapiro.test(BM_mini$age)
+shapiro.test(BM_mini$balance)
+shapiro.test(BM_mini$day)
+shapiro.test(BM_mini$duration)
+shapiro.test(BM_mini$campaign)
+shapiro.test(BM_mini$pdays)
+shapiro.test(BM_mini$previous)
+```
+
+# Step 7a: test for correlations within the numeric attributes
+Since we know the numeric data is not-normal, we use Spearman instead of Pearson method
+The correlation heat map is created
+Pearson method is default and p>0.05 means NOT correlated
+Spearman metod - if p<0.05 means NOT correlated
+
+```{r}
+# if p<0.05 then significant meaning correlated
+# let's do a simple example with 2 variables
+cor.test(BM$previous,BM$age, method="spearman")
+cor.test(BM$previous,BM$age)
+```
+
+# Step 7b: But first we must change the "y" column from yes/no to numeric 0/1
+dataset = BM_01
+
+```{r}
+BM_01 <- read.csv("/Users/jeanwills/Desktop/CKME136/bank_full.csv", header=T, sep = ";", stringsAsFactors = T, na.strings = "NA")
+BM_01$y<- ifelse(BM_01$y==c("yes"), 0, 1)
+```
+
+# Step 7c: Table of correlations 
+Yikes, we can see that the data is not very well correlated to the y variable
+except negatively to duration!
+
+```{r}
+# correlations data 
+num<- data.frame(BM_01$age, BM_01$balance, BM_01$day, BM_01$duration, BM_01$campaign, BM_01$pdays, BM_01$previous, BM_01$y)
+cor(num[, c(1:8)])
+```
+
+# Step 7d: scatterplot matrix of the numeric data - this takes a bit of time
+
+```{r}
+# BM_01 created above 
+library(psych)
+# pairs works too
+# top right part shows correlations, diagonal shows histograms, and bottom left shows the
+# scatterplots, with the circles showing strength of correlation (circle~little, oval~lot)
+pairs.panels(BM_01[c("age","balance","day","duration","campaign","pdays","previous","y")])
+```
+
+# Step 7e: heat map of the correlations between the independent variables
+
+```{r}
+library(plyr)
+library(GGally)
+library(ggplot2)
+library(reshape2)
+library(caret)
+require(gplots) # need this one?
+# num was created above
+ggpairs(num[, c(1,8)])
+# require(scales)
+bnk_core<- cor(num[, c(1:8)])
+bnk_melt<- melt(bnk_core, varnames=c("x", "y"),value.name="Correlation")
+# summarize the correlation matrix
+highlyCorrelated <- findCorrelation(bnk_core, cutoff=0.5)
+# print indexes of highly correlated attributes
+ggplot(bnk_melt, aes(x=x, y=y)) +
+  geom_tile(aes(fill=Correlation)) + 
+  scale_fill_gradient2(low="red", mid="white", high="blue", guide=guide_colorbar(ticks=FALSE, barheight=10),limits=c(-1,1)) +
+  theme_minimal() +
+  labs(x=NULL, y=NULL)
+```
+
+we notice from above that there are only 2 somewhat correlated data items
+- PREVIOUS to PDAYS has a correlation of 0.45
+- Duration to Y has a correlation of -0.39
+
+# Step 8a: Pearson chi-sq test for correlations of non-numeric data
+# was not able to do as a group so doing 2 at a time
+chisq.test(table(BM$job, BM$marital))$expected
+$expected shows what the results should look like if true under null hypothesis
+
+```{r}
+# test for one attribute at a time against all the others for correlation
+# if p<0.05 then not significant 
+chisq.test(BM$job, BM$marital)
+chisq.test(BM$job, BM$education)
+chisq.test(BM$job, BM$housing)
+chisq.test(BM$job, BM$loan)
+chisq.test(BM$job, BM$contact)
+chisq.test(BM$job, BM$month)
+chisq.test(BM$job, BM$poutcome)
+# all p-values ~ zero - none significant
+```
+
+# step 8b
+
+```{r}
+chisq.test(BM$marital, BM$education)
+chisq.test(BM$marital, BM$housing)
+chisq.test(BM$marital, BM$loan)
+chisq.test(BM$marital, BM$contact)
+chisq.test(BM$marital, BM$month)
+chisq.test(BM$marital, BM$poutcome)
+# all p-values ~ zero
+```
+
+# step 8c
+
+```{r}
+chisq.test(BM$education, BM$housing)
+chisq.test(BM$education, BM$loan)
+chisq.test(BM$education, BM$contact)
+chisq.test(BM$education, BM$month)
+chisq.test(BM$education, BM$poutcome)
+# all p-values ~ zero
+```
+
+# step 8d
+
+```{r}
+chisq.test(BM$housing, BM$loan)
+chisq.test(BM$housing, BM$contact)
+chisq.test(BM$housing, BM$month)
+chisq.test(BM$housing, BM$poutcome)
+# all p-values ~ zero
+```
+
+# step 8e
+
+```{r}
+chisq.test(BM$loan, BM$contact)
+chisq.test(BM$loan, BM$month)
+chisq.test(BM$loan, BM$poutcome)
+# all p-values ~ zero
+```
+
+# step 8f
+
+```{r}
+chisq.test(BM$contact, BM$month)
+chisq.test(BM$contact, BM$poutcome)
+chisq.test(BM$month, BM$poutcome)
+# all p-values ~ zero
+```
+
+#step 8g
+now test y with all attributes against it
+
+```{r}
+chisq.test(BM$y, BM$job)
+chisq.test(BM$y, BM$marital)
+chisq.test(BM$y, BM$education)
+chisq.test(BM$y, BM$housing)
+chisq.test(BM$y, BM$loan)
+chisq.test(BM$y, BM$contact)
+chisq.test(BM$y, BM$month)
+chisq.test(BM$y, BM$poutcome)
+# all p-values ~ zero - this is not good! we want correlation!!
+```
+
+
+# DONE TO HERE
+delete line below???
+```{r}
+BM2 <- read.csv("/Users/jeanwills/Desktop/CKME136/bank_full.csv", header=T, sep = ";", stringsAsFactors = T, na.strings = "NA")
+# BM2$y<- ifelse(BM2$y==c("yes"), 0, 1)
+```
+
+# Step 9: Cleaning the Data
+we currently have BM and BM_01 files
+1. delete the attribute 'default'
+2. switch -1 -> 0 in 'pdays'
+3. delete one row in 'previous' where the data = 275
+we have BM and BM_01 files again
+
+```{r}
+BM<- select(BM,-5)
+BM$pdays<- ifelse(BM$pdays == "-1", 0, BM$pdays)
+# where BM$previous has a data item == 275 then delete it
+BM<- BM[grep("275", BM$previous, invert=TRUE),]
+BM_01<- as.data.frame(BM)
+BM_01$y<- ifelse(BM_01$y==c("yes"), 0, 1)
+```
+
+# PHASE 2
