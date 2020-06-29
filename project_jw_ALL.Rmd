@@ -1,0 +1,1540 @@
+---
+title: "Project_JW"
+author: "Jean Wills"
+date: "5/27/2020"
+output:
+  word_document: default
+    df_print: paged
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Project: Portuguese Bank Marketing Data
+# note: go to step 9 to get to model section and new datasets
+# Step 1: install the packages required
+
+```{r}
+# install.packages("lattice")
+# install.packages("ggplot2")
+# install.packages("mlbench")
+# install.packages("caret")
+# install.packages("plyr")
+# install.packages("GGally")
+# install.packages("reshape2")
+# install.packages("psych")
+# install.packages("dplyr")
+
+# install.packages("normalr")
+# install.packages("rJava")
+# install.packages("RWeka")
+#
+```
+
+# Step 2: read the data and look at the data structure
+
+```{r}
+# setwd("~/Users/jeanwills/Desktop/CKME136/")
+BM <- read.csv("/Users/jeanwills/Desktop/CKME136/bank_full.csv", header=T, sep = ";", stringsAsFactors = T, na.strings = "NA")
+# look at the data structure 
+BM_mini <- read.csv("/Users/jeanwills/Desktop/CKME136/bank.csv", header=T, sep = ";", stringsAsFactors = T, na.strings = "NA")
+#str(BM)
+# let's check number of complete cases for no data missing at all -> no missing data!
+sum(complete.cases(BM))
+```
+
+# step 2 - Look at the bank data summary
+
+```{r}
+summary(BM)
+# we see that 7 attributes are numeric and the rest are now factors
+# we will come back to this and change the classes where required
+#
+# should show in R: weights of the classification data to yes and no of answer
+# table(BM$education) is for total
+# data done in excel and Weka
+```
+
+# Step 3a: plot the boxplots of the numeric data
+
+```{r}
+# age has outliers above ~70
+par(mfrow=c(1,4))
+boxplot(BM$age, main = "Client's age")
+# balance has a large number of outliers above Q3
+boxplot(BM$balance, main = "Balance")
+# day has a large number of outliers above Q3
+boxplot(BM$day, main = "day called on")
+# duration has a large number of outliers above Q3
+boxplot(BM$duration, main = "call duration (sec)")
+```
+
+# Step 3b
+
+```{r}
+par(mfrow=c(1,3))
+# camapign has a large number of outliers above the Q3
+boxplot(BM$campaign, main = "Boxplot of campaign")
+# pdays has a VERY large number of outliers above Q3
+boxplot(BM$pdays, main = "Boxplot of pdays")
+# duration has a large number of outliers above Q3
+boxplot(BM$previous, main = "Boxplot of previous")
+```
+
+# Step 4a: plot histograms to reveal skewness / normality
+
+```{r}
+par(mfrow=c(1,4))
+# age looks skewed right
+hist(BM$age, main = "Hist - Age", breaks = 5)
+# balance is skewed right
+hist(BM$balance, main = "Hist - Balance", breaks = 5)
+# day somewhat skewed right
+hist(BM$day, main = "Hist - day", breaks = 10)
+# duration is skewed right
+hist(BM$duration, main = "Hist - call duration", breaks = 5)
+```
+
+# Step 4b
+
+```{r}
+par(mfrow=c(1,3))
+# campaign is skewed right - most data is in 1 day
+hist(BM$campaign, main = "Histogram of campaign", breaks = 5)
+# pdays skewed right
+hist(BM$pdays, main = "Histogram of pdays", breaks = 5)
+# previous skewed right
+hist(BM$previous, main = "Histogram of previous", breaks = 5)
+```
+
+# 4c logs of the numeric data and replot the histograms...
+probably won't use this as some data is negative and <1 and doing log(data) does NOT work for them
+keep for now
+
+```{r}
+# day is somewhat better in the original histogram but will still change to be consistent
+# NaNs produced.....need # >1.0 - balance and duration would need adjustments
+BM_log<-BM
+BM_log$age<-log(BM$age)
+# balance has negative values 
+BM_log$balance<-log(BM$balance)
+BM_log$day<-log(BM$day)
+# duration has zeros
+BM_log$duration<-log(BM$duration)
+#
+par(mfrow=c(1,4))
+hist(BM_log$age, main = "log(Age)", breaks = 5)
+hist(BM_log$balance, main = "log(Balance)", breaks = 5)
+hist(BM_log$day, main = "log(Day)", breaks = 5)
+hist(BM_log$duration, main = "log(call duration)", breaks = 10)
+```
+
+# 4d logs of the numeric data and replot the histograms...
+
+```{r}
+# NaNs produced.....need # >1.0 - pdays and previous would need adjustments
+BM_log$campaign<-log(BM$campaign)
+# pdays has -1
+BM_log$pdays<-log(BM$pdays)
+# previous has 0 and 1
+BM_log$previous<-log(BM$previous)
+# str(BM_log)
+par(mfrow=c(1,3))
+hist(BM_log$campaign, main = "log(campaign)", breaks = 5)
+hist(BM_log$pdays, main = "log(pdays)", breaks = 5)
+hist(BM_log$previous, main = "log(previous)", breaks = 5)
+# most are more normal except campaign is still right skewed
+```
+
+# Step 5a: Q-Q plots
+
+```{r}
+par(mfrow=c(1,2))
+qqnorm(BM$age, main = "Norm Q-Q plot of Age")
+qqline(BM$age)
+qqnorm(BM$balance, main = "Norm Q-Q plot of balance")
+qqline(BM$balance)
+# both not normal
+```
+
+# Step 5b
+
+```{r}
+par(mfrow=c(1,2))
+qqnorm(BM$day, main = "Norm Q-Q plot of day")
+qqline(BM$day)
+qqnorm(BM$duration, main = "Norm Q-Q plot of duration")
+qqline(BM$duration)
+# both not normal
+```
+
+# Step 5c
+
+```{r}
+par(mfrow=c(1,3))
+qqnorm(BM$campaign, main = "Norm Q-Q plot of campaign")
+qqline(BM$campaign)
+qqnorm(BM$pdays, main = "Norm Q-Q plot of pdays")
+qqline(BM$pdays)
+qqnorm(BM$previous, main = "Norm Q-Q plot of previous")
+qqline(BM$previous)
+# all 3 not normal
+```
+
+# Step 6: Shapiro Tests for Normality on numeric data
+IF p<0.05 then the numeric data is not normal and significant
+Shapiro requires dataset size under 5,000 so using BM_mini version
+# --- All numeric attributes are NOT normal
+
+```{r}
+shapiro.test(BM_mini$age)
+shapiro.test(BM_mini$balance)
+shapiro.test(BM_mini$day)
+shapiro.test(BM_mini$duration)
+shapiro.test(BM_mini$campaign)
+shapiro.test(BM_mini$pdays)
+shapiro.test(BM_mini$previous)
+```
+
+# Step 7a: test for correlations within the numeric attributes
+Since we know the numeric data is not-normal, we use Spearman instead of Pearson method
+The correlation heat map is created
+Pearson method is default and p>0.05 means NOT correlated
+Spearman method - if p<0.05 means NOT correlated
+
+```{r}
+# if p<0.05 then significant meaning correlated
+# simple example with 2 variables
+# if we do this, we need y as numeric 0/1
+# cor.test(BM$previous,BM$age, method="spearman")
+# cor.test(BM$previous,BM$age)
+# also: cor(BM$previous,BM$age)
+```
+
+# Step 7b: Table of correlations for all data
+# Correlation test can also be considered a Feature Removal method
+
+```{r}
+# test ALL data for correlations
+library(lattice)
+library(ggplot2)
+BM_num<-BM
+# num<- subset(BM_01, select = c("age", "balance", "day", "duration", "campaign", "pdays", "previous", "y"))
+BM_num$job<- as.numeric(BM_num$job)  #12
+BM_num$marital<- as.numeric(BM_num$marital) #4
+BM_num$education<- as.numeric(BM_num$education) #4
+BM_num$default<- as.numeric(BM_num$default) #2
+BM_num$housing<- as.numeric(BM_num$housing)  #2
+BM_num$loan<- as.numeric(BM_num$loan)  #2
+BM_num$contact<- as.numeric(BM_num$contact) #3
+BM_num$month<- as.numeric(BM_num$month)  #12
+BM_num$poutcome<- as.numeric(BM_num$poutcome)  #4
+# correlations data 
+# Identify highly correlated features in caret r package
+# ensure the results are repeatable
+set.seed(12)
+library(mlbench)
+library(caret)
+# leaving out y so only 16 not 17
+corMatrix<-cor(BM_num[, c(1:16)])
+print(corMatrix)
+highCorr <- findCorrelation(corMatrix, cutoff=0.5)
+print(highCorr)
+```
+
+# results:
+only 3 >= 0.5 corr: 
+poutcome to pdays is -0.858 (negative)
+poutcome to previous is -0.49 (negative)
+previous to pdays is 0.455 (mild positive)
+# Keep all for now
+
+# Step 7c: do a correlation heat map to visualize the data
+
+```{r}
+library(plyr)
+library(GGally)
+library(ggplot2)
+library(reshape2)
+library(caret)
+# BM_num was created above
+# leaving out y so only 16 not 17
+# this one prints extra info -  ggpairs(BM_num[, c(1,16)])
+# require(scales)
+bnk_core<- cor(BM_num[, c(1:16)])
+bnk_melt<- melt(bnk_core, varnames=c("x", "y"),value.name="Correlation")
+# summarize the correlation matrix
+highlyCorrelated <- findCorrelation(bnk_core, cutoff=0.5)
+# print indexes of highly correlated attributes
+ggplot(bnk_melt, aes(x=x, y=y)) +
+  geom_tile(aes(fill=Correlation)) + 
+  scale_fill_gradient2(low="blue", mid="white", high="red", guide=guide_colorbar(ticks=FALSE, barheight=10),limits=c(-1,1)) +
+  theme_minimal() +
+  labs(x=NULL, y=NULL)
+```
+
+# Step 7d: scatterplot matrix of the numeric data - (this takes a bit of time)
+
+```{r}
+# BM_num created above 
+library(psych)
+# pairs works too
+# top right part shows correlations, diagonal shows histograms, and bottom left shows the
+# scatterplots, with the circles showing strength of correlation (circle~little, oval~lot)
+# took out y in the end
+pairs.panels(BM[c("age","balance","day","duration","campaign","pdays","previous")])
+```
+
+# Step 8a: Pearson chi-sq test for correlations of non-numeric data
+# this is a sample of what could be done if we did not do the heat map above
+Also:
+chisq.test(table(BM$job, BM$marital))$expected
+and $expected shows what the results should look like if true under null hypothesis
+
+```{r}
+# test for one attribute at a time against all the others for correlation
+# if p<0.05 then not significant 
+chisq.test(BM$job, BM$marital)
+chisq.test(BM$job, BM$education)
+# all p-values ~ zero - none significant
+```
+
+#step 8b
+# extra - test y with all categorical attributes against it
+
+```{r}
+chisq.test(BM$y, BM$job)
+chisq.test(BM$y, BM$marital)
+chisq.test(BM$y, BM$education)
+chisq.test(BM$y, BM$housing)
+chisq.test(BM$y, BM$loan)
+chisq.test(BM$y, BM$contact)
+chisq.test(BM$y, BM$month)
+chisq.test(BM$y, BM$poutcome)
+# all p-values ~ zero - this is not good! we want correlation!!
+```
+
+# PART 2: "HOUSE OF DATA CONVERSIONS"
+# start fresh from here....
+1. read in files 
+KEEPING DEFAULT for now
+2a. the max # of contacts was 275 which is way too large=> delete
+2b. switch -1 -> 0 in 'pdays'
+2c. switch duration in seconds to minutes for easier use
+and keep BM, BM_01, and BM_num, BM_mini datasets, etc....
+
+```{r}
+# step 1 - read in fresh files
+library(dplyr)
+BM <- read.csv("/Users/jeanwills/Desktop/CKME136/bank_full.csv", header=T, sep = ";", stringsAsFactors = T, na.strings = "NA")
+# step 2 -  make changes
+# nope - may delete later - attribute 'default' in column 5
+# BM<- select(BM,-5)
+# specific deletion where BM$previous == 275 then delete it
+BM<- BM[grep("275", BM$previous, invert=TRUE),]
+# switch -1 -> 0 in 'pdays'
+BM$pdays<- ifelse(BM$pdays == "-1", 0, BM$pdays)
+BM$duration<- BM$duration/60
+# now copy to other datasets, depending on what to do
+```
+
+for BM_01:
+```{r}
+#
+BM_01 <- BM
+BM_01$y<- ifelse(BM_01$y==c("yes"), 1, 0)
+```
+
+
+===================================================
+# EXTRA: to delete when done
+#arules
+arules: res <- discretize(df$b, method = "frequency", breaks = 3)
+recipes: discretize(x, method = "frequency", breaks = 3, 
+  labels = NULL, include.lowest = TRUE, right = FALSE, dig.lab = 3,
+  ordered_result = FALSE, infinity = FALSE, onlycuts = FALSE, 
+  categories, ...)
+  
+# equal interval width
+table(discretize(x, method = "interval", breaks = 3))
+hist(x, breaks = 20, main = "Equal Interval length")
+abline(v = discretize(x, method = "interval", breaks = 3, 
+  onlycuts = TRUE), col = "red")
+
+### k-means clustering 
+table(discretize(x, method = "cluster", breaks = 3))
+hist(x, breaks = 20, main = "K-Means")
+abline(v = discretize(x, method = "cluster", breaks = 3, 
+  onlycuts = TRUE), col = "red")
+
+### user-specified (with labels)
+table(discretize(x, method = "fixed", breaks = c(-Inf, 6, Inf), 
+    labels = c("small", "large")))
+
+===================================================
+
+# PART 3 - CONVERSIONS
+# Part 3 - step 1: Conversion - numeric to nominal - RESULT is BM_fact
+method 1: equal frequency: manually using quantiles to break up the data
+method 2: equal width = (max - min)/k, where k is the # of groupings that you choose
+# I am using method 1
+
+```{r}
+# Conversion from Numeric to Categorical
+# using method 1: approx. equal frequency -with trial and error
+# 6 numeric to transform: age, balance, day, duration, campaign, pdays, previous
+# note one of my textbooks does this automatically with quantile...TO DO
+BM_fact<- BM
+# age: (95-18)/5 = ~15 year breaks
+BM_fact$age<- cut(BM_fact$age, breaks = c(0,33,39,48,100), labels = c("18-33", "33-39", "39-48", "48-95"))
+BM_fact$balance<- cut(BM_fact$balance, breaks = c(-9000, 72, 448, 1428, 105000), labels = c("negative", "72-448", "448-1428", "over1428"))
+# BM_fact$day< as.factor(BM_fact$day)
+BM_fact$day<- cut(BM_fact$day, breaks = c(0,8,16,21,32), labels = c("1-7", "8-15", "16-20", "21-31")) 
+BM_fact$duration<- cut(BM_fact$duration, breaks = c(-1,2,3,5,90), labels = c("0-2m", "2-3m", "3-5m", "over5min")) 
+BM_fact$campaign<- cut(BM_fact$campaign, breaks = c(0, 2, 3, 70), labels = c("1-2", "2-3", "over3")) 
+BM_fact$pdays<- cut(BM_fact$pdays, breaks = c(-1,100,200,400,600,800,1000), labels = c("0-100", "100-200","200-400","400-600","600-800","over800")) 
+BM_fact$previous<- cut(BM_fact$previous, breaks = c(-1,1,10,20,30,60), labels = c("0-1", "1-10","10-20","20-30","over30")) 
+# result: BM_fact wih only categorical data
+```
+
+# Part 3 - step 2: Conversion A- Categorical to Numeric - RESULT is BM_num
+# (numeric still NOT normalized/scaled)..
+
+```{r}
+BM_num <- BM
+BM_num$job<- as.numeric(BM_num$job)  #12
+# marital: 1-single, 2-married, 3-divorced
+BM_num$marital<- ifelse(BM_num$marital == c("single"), 1, 
+                        ifelse(BM_num$marital== c("married"), 2, 3))
+# education: 0:unknown, 1: primary, 2:secondary, 3:divorced
+BM_num$education<- ifelse(BM_num$education == c("unknown"), 0, 
+                          ifelse(BM_num$education == c("primary"), 1, 
+                                 ifelse(BM_num$education == c("secondary"), 2, 3)))
+# default, housing, loan: if yes then 0 else 1
+# BM_num$housing<- as.numeric(BM_num$housing)  #2
+BM_num$default<- ifelse(BM_num$default == c("yes"), 0, 1) #2
+BM_num$housing<- ifelse(BM_num$housing == c("yes"), 0, 1) #2
+BM_num$loan<- ifelse(BM_num$loan == c("yes"), 0, 1) #2
+BM_num$contact<- as.numeric(BM_num$contact) #3
+# month: jan:1, feb:2.....dec:12
+BM_num$month<- ifelse(BM_num$month == "jan", 1, 
+                     ifelse(BM_num$month == "feb", 2, 
+                            ifelse(BM_num$month == "mar", 3,
+                                   ifelse(BM_num$month == "apr", 4, 
+                                          ifelse(BM_num$month == "may", 5, 
+                                                 ifelse(BM_num$month == "jun", 6,
+                                                        ifelse(BM_num$month == "jul", 7,
+                      ifelse(BM_num$month == "aug", 8,
+                            ifelse(BM_num$month == "sep", 9,
+                                   ifelse(BM_num$month == "oct", 10,
+                                          ifelse(BM_num$month == "nov", 11, 12)))))))))))
+# poutcome: 0:unknown,other, 1:failure, 2: success
+BM_num$poutcome<- ifelse(BM_num$poutcome == c("failure"), 1, ifelse(BM_num$poutcome== c("success"), 2, 0))   
+# result: BM_num with only numeric data (NOT scaled)
+```
+
+# Part 3 - step 2: Conversion B- Categorical to Numeric - as dummy variables
+# RESULT is BM_dummy
+# numeric still NOT normalized/scaled
+
+# BM$y<- factor(BM$y, levels = c("yes", "no"), labels = c("yes", "no"))
+# round(prop.table(table(BM$y)) * 100, digits=1)
+
+```{r}
+# dummy coding
+# keep y as factor
+# dataset is too large to run through Select Attrbutes - try BM_mini version
+BM_dummy <- BM
+# now create new attributes for each component in attribute less 1 category
+# for example, marital has 3 attributes so we need 2 dummy variables (each of 0,1)
+# BM_fact$y<- ifelse(BM_fact$y==c("yes"), 0, 1)
+#
+BM_dummy$job1 <- ifelse(BM_dummy$job == c("admin."), 1, 0)
+BM_dummy$job2 <- ifelse(BM_dummy$job == c("blue-collar"), 1, 0)
+BM_dummy$job3 <- ifelse(BM_dummy$job == c("entrepreneur"), 1, 0)
+BM_dummy$job4 <- ifelse(BM_dummy$job == c("housemaid"), 1, 0)
+BM_dummy$job5 <- ifelse(BM_dummy$job == c("management"), 1, 0)
+BM_dummy$job6 <- ifelse(BM_dummy$job == c("retired"), 1, 0)
+BM_dummy$job7 <- ifelse(BM_dummy$job == c("self-employed"), 1, 0)
+BM_dummy$job8 <- ifelse(BM_dummy$job == c("services"), 1, 0)
+BM_dummy$job9 <- ifelse(BM_dummy$job == c("student"), 1, 0)
+BM_dummy$job10 <- ifelse(BM_dummy$job == c("technician"), 1, 0)
+BM_dummy$job11 <- ifelse(BM_dummy$job == c("unemployed"), 1, 0)
+#
+BM_dummy$mar1 <-  ifelse(BM_dummy$marital== c("divorced"), 1, 0)
+BM_dummy$mar2 <-  ifelse(BM_dummy$marital== c("married"), 1, 0)
+#
+BM_dummy$ed1 <- ifelse(BM_dummy$education == c("primary"), 1, 0)
+BM_dummy$ed2 <- ifelse(BM_dummy$education == c("secondary"), 1, 0)
+BM_dummy$ed3 <- ifelse(BM_dummy$education == c("tertiary"), 1, 0)
+#
+BM_dummy$hous1 <- ifelse(BM_dummy$housing == c("no"), 1, 0)
+BM_dummy$def1 <- ifelse(BM_dummy$default == c("no"), 1, 0)
+BM_dummy$loan1 <- ifelse(BM_dummy$loan == c("no"), 1, 0)
+#
+BM_dummy$cont1 <- ifelse(BM_dummy$contact == c("cellular"), 1, 0)
+BM_dummy$cont2 <- ifelse(BM_dummy$contact == c("telephone"), 1, 0)
+#
+BM_dummy$mon1 <- ifelse(BM_dummy$month == c("jan"), 1, 0)
+BM_dummy$mon2 <- ifelse(BM_dummy$month == c("feb"), 1, 0)
+BM_dummy$mon3 <- ifelse(BM_dummy$month == c("mar"), 1, 0)
+BM_dummy$mon4 <- ifelse(BM_dummy$month == c("apr"), 1, 0)
+BM_dummy$mon5 <- ifelse(BM_dummy$month == c("may"), 1, 0)
+BM_dummy$mon6 <- ifelse(BM_dummy$month == c("jun"), 1, 0)
+BM_dummy$mon7 <- ifelse(BM_dummy$month == c("jul"), 1, 0)
+BM_dummy$mon8 <- ifelse(BM_dummy$month == c("aug"), 1, 0)
+BM_dummy$mon9 <- ifelse(BM_dummy$month == c("sep"), 1, 0)
+BM_dummy$mon10 <- ifelse(BM_dummy$month == c("oct"), 1, 0)
+BM_dummy$mon11 <- ifelse(BM_dummy$month == c("nov"), 1, 0)
+#
+BM_dummy$pout1 <- ifelse(BM_dummy$poutcome == c("failure"), 1, 0)
+BM_dummy$pout2 <- ifelse(BM_dummy$poutcome == c("success"), 1, 0)
+BM_dummy$pout3 <- ifelse(BM_dummy$poutcome == c("other"), 1, 0)
+# ok so we end up with a lot - then we have to delete the original Factor attributes
+```
+
+next step in this process...
+# Part 3 - step 2 Conversion B cont'd. take out the original attributes and the answer Y column
+# RESULT: BM_dummy 
+
+```{r}
+# keep the y column in separate file for now
+BM_y<- BM_dummy[16]
+# now take out y in file - to place later at the end
+BM_dummy<- BM_dummy[-16]
+# now take out the remaining factors one at a time
+BM_dummy<- BM_dummy[-15]
+BM_dummy<- BM_dummy[-10]
+BM_dummy<- BM_dummy[-8]
+BM_dummy<- BM_dummy[-7]
+BM_dummy<- BM_dummy[-6]
+BM_dummy<- BM_dummy[-4]
+BM_dummy<- BM_dummy[-3]
+BM_dummy<- BM_dummy[-2]
+# add back y at the end 
+# y is still a factor
+BM_dummy<- cbind(BM_dummy, BM_y)
+# result: BM_dummy with dummies for categorical = > all numeric (still not scaled)
+```
+
+# Part 3 - step 3: Conversion - BM_mini version - then use same code above
+# EXCEPT for numeric to nominal - this is most likely different ************ 
+# need to check first
+
+```{r}
+BM_mini <- read.csv("/Users/jeanwills/Desktop/CKME136/bank.csv", header=T, sep = ";", stringsAsFactors = T, na.strings = "NA")
+# nope - may delete later - attribute 'default' in column 5
+# BM_mini<- select(BM_mini,-5)
+# switch -1 -> 0 in 'pdays'
+BM_mini$pdays<- ifelse(BM_mini$pdays == "-1", 0, BM_mini$pdays)
+BM_mini$duration<- BM_mini$duration/60
+# now have BM_mini
+```
+
+# PART 4 - SCALE original NUMERIC DATA - 2 methods to use
+for models that use (i.e. Euclidian) distance between 2 points or require normal data (regression, PCA, etc.)
+2 methods of normalizing numeric data:
+1. Use min-max normalization: x_new = (x - x_min) / (x_max - x_min)
+2. Use z-score standardization: x_new = (x - Mean) / Sd
+
+code for generic version then can swap in datasets:
+step 1: BM-> BM_scale, BM_z
+step 2: BM_num-> BM_num_scale, BM_num_z
+
+# Part 4 - step 1a - BM-> BM_scale
+
+```{r}
+# KEEP: age-1, balance-6, day-10, duration-12, campaign-13, pdays-14, previous-15
+BM_step<-BM
+# use grep ?
+BM_step<-BM_step[-17]
+BM_step<-BM_step[-16]
+BM_step<-BM_step[-11]
+BM_step<-BM_step[-9]
+BM_step<-BM_step[-8]
+BM_step<-BM_step[-7]
+BM_step<-BM_step[-5]
+BM_step<-BM_step[-4]
+BM_step<-BM_step[-3]
+BM_step<-BM_step[-2]
+# method 1
+normalize<- function(x) {
+  return ((x - min(x)) / (max(x) - min(x)))
+}
+BM_scale<- as.data.frame(lapply(BM_step[1:7], normalize))
+# now recombine dataframes with the nominal components
+BM_scale$job<-BM$job
+BM_scale$marital<-BM$marital
+BM_scale$education<-BM$education
+BM_scale$default<-BM$default
+BM_scale$housing<-BM$housing
+BM_scale$loan<-BM$loan
+BM_scale$contact<-BM$contact
+BM_scale$month<-BM$month
+BM_scale$poutcome<-BM$poutcome
+BM_scale$y<-BM$y
+# str(BM_scale)
+# result used BM file but now BM_scale with normalized numeric data
+# and y is factor
+# to convert y to numeric use next line
+# BM_scale$y<- ifelse(BM_scale$y==c("yes"), 1, 0)
+```
+
+# Part 4 - step 1b - BM-> BM_z
+
+```{r}
+# KEEP: age-1, balance-6, day-10, duration-12, campaign-13, pdays-14, previous-15
+BM_step<-BM
+# use grep ?
+BM_step<-BM_step[-17]
+BM_step<-BM_step[-16]
+BM_step<-BM_step[-11]
+BM_step<-BM_step[-9]
+BM_step<-BM_step[-8]
+BM_step<-BM_step[-7]
+BM_step<-BM_step[-5]
+BM_step<-BM_step[-4]
+BM_step<-BM_step[-3]
+BM_step<-BM_step[-2]
+#
+# method 2
+z_norm<- function(x) {
+  return ((x - mean(x)) / sd(x))
+}
+BM_z<- as.data.frame(lapply(BM_step[1:7], z_norm))
+# now recombine dataframes with the nominal components
+BM_z$job<-BM$job
+BM_z$marital<-BM$marital
+BM_z$education<-BM$education
+BM_z$default<-BM$default
+BM_z$housing<-BM$housing
+BM_z$loan<-BM$loan
+BM_z$contact<-BM$contact
+BM_z$month<-BM$month
+BM_z$poutcome<-BM$poutcome
+BM_z$y<-BM$y
+# result used BM file but now BM_z with normalized numeric data
+# and y is factor
+# to convert y to numeric use next line
+# BM_z$y<- ifelse(BM_z$y==c("yes"), 1, 0)
+```
+
+# Part 4 - step 2a - BM_num-> BM_num_scale
+
+```{r}
+# KEEP: age-1, balance-6, day-10, duration-12, campaign-13, pdays-14, previous-15
+# run section of code above in Part 3 step 2, to get BM_num first (or BM_dummy)
+# or BM_step<- BM_dummy
+BM_step<-BM_num
+# use grep ?
+BM_step<-BM_step[-17]
+BM_step<-BM_step[-16]
+BM_step<-BM_step[-11]
+BM_step<-BM_step[-9]
+BM_step<-BM_step[-8]
+BM_step<-BM_step[-7]
+BM_step<-BM_step[-5]
+BM_step<-BM_step[-4]
+BM_step<-BM_step[-3]
+BM_step<-BM_step[-2]
+# method 1
+normalize<- function(x) {
+  return ((x - min(x)) / (max(x) - min(x)))
+}
+BM_num_scale<- as.data.frame(lapply(BM_step[1:7], normalize))
+# now recombine dataframes with the nominal components
+BM_num_scale$job<-BM_num$job
+BM_num_scale$marital<-BM_num$marital
+BM_num_scale$education<-BM_num$education
+BM_num_scale$default<-BM_num$default
+BM_num_scale$housing<-BM_num$housing
+BM_num_scale$loan<-BM_num$loan
+BM_num_scale$contact<-BM_num$contact
+BM_num_scale$month<-BM_num$month
+BM_num_scale$poutcome<-BM_num$poutcome
+BM_num_scale$y<-BM_num$y
+str(BM_num_scale)
+# result used BM_num file but now BM_num_scale with normalized numeric data
+# and y is still a factor
+# to convert y to numeric use next line
+# BM_num_scale$y<- ifelse(BM_num_scale$y==c("yes"), 1, 0)
+```
+
+# Part 4 - step 2b - BM_num-> BM_num_z  
+
+```{r}
+# KEEP: age-1, balance-6, day-10, duration-12, campaign-13, pdays-14, previous-15
+# or BM_step<- BM_dummy
+BM_step<-BM_num
+# use grep ?
+BM_step<-BM_step[-17]
+BM_step<-BM_step[-16]
+BM_step<-BM_step[-11]
+BM_step<-BM_step[-9]
+BM_step<-BM_step[-8]
+BM_step<-BM_step[-7]
+BM_step<-BM_step[-5]
+BM_step<-BM_step[-4]
+BM_step<-BM_step[-3]
+BM_step<-BM_step[-2]
+#
+# method 2
+z_norm<- function(x) {
+  return ((x - mean(x)) / sd(x))
+}
+BM_num_z<- as.data.frame(lapply(BM_step[1:7], z_norm))
+# now recombine dataframes with the nominal components
+BM_num_z$job<-BM_num$job
+BM_num_z$marital<-BM_num$marital
+BM_num_z$education<-BM_num$education
+BM_num_z$default<-BM_num$default
+BM_num_z$housing<-BM_num$housing
+BM_num_z$loan<-BM_num$loan
+BM_num_z$contact<-BM_num$contact
+BM_num_z$month<-BM_num$month
+BM_num_z$poutcome<-BM_num$poutcome
+BM_num_z$y<-BM_num$y
+# result used BM file but now BM_num_z with normalized numeric data
+# and y is still a factor
+# to convert y to numeric use next line
+# BM_num_z$y<- ifelse(BM_num_z$y==c("yes"), 1, 0)
+```
+
+# ok down to here
+
+# PART 5 - Feature Selection Methods
+# OK come back to this 
+Feature Selection Methods 1 - 3:
+# 1: Use correlations   -see step 7c above - no change
+# 2: Rank Features By Importance - i.e. LVQ - see below
+# 3: Use Random Forest - see below
+
+NOTE: we can do feature selection on its own or as part of models ***
+
+# Part 5 - #2 Feature Selection - Neural Network method - ALL numeric data
+Learning Vector Quantization algorithm (LVQ) is an artificial neural network algorithm
+? preprocess = scale means it is scaling?
+10-fold repeated 5 times
+should be 10 x 10
+
+```{r}
+# this version only uses ALL numeric data from mini-set 
+set.seed(7)
+# y stays as a category
+# num<- subset(BM_mini_num, select = c("age", "balance", "day", "duration", "campaign", "pdays", "previous", "y"))
+# load the library
+library(mlbench)
+library(caret)
+# prepare training scheme
+control <- trainControl(method="repeatedcv", number=10, repeats=5)
+# we also need to 'test' the dataset after....
+model <- train(y~., data=BM_mini_num, method="lvq", preProcess="scale", trControl=control)
+# estimate variable importance
+importance <- varImp(model, scale=FALSE)
+# summarize importance
+print(importance)
+# plot importance
+plot(importance)
+# results: duration (0.815), previous (0.6), contact (0.6), pdays (0.59), poutcome (0.59), [housing (0.58), balance (0.57)]
+# campaign (0.556), education (0.54), loan (0.54), age (0.51), day (0.51) 
+# keep above 0.5 and all else can delete
+```
+
+# Part 5 - #3 - Feature Selection - Random Forest - ALL numeric data BM_num
+Recursive Feature Elimination or RFE
+random forest function rfFuncs
+method = cross-validation , repeat 10 times
+# Kappa should be >0.6 "machine learning with R" pg.324
+# kappa takes imbalance into account
+
+```{r}
+set.seed(7)
+# str(BM_num)
+library(mlbench)
+library(caret)
+# seemed to require lattice and ggplot ???
+# had run through this with mini data but stopped with errors below on whole file
+# define the control using a random forest selection function rfFuncs
+control <- rfeControl(functions=rfFuncs, method="cv", number=10)
+# run the RFE algorithm
+results <- rfe(BM_num[,1:16], BM_num[,17], sizes=c(1:16), rfeControl=control)
+# summarize the results
+print(results)
+# list the chosen features
+predictors(results)
+# plot the results
+plot(results, type=c("g", "o"))
+#results show top 7: duration, [month], poutcome, pdays, contact, previous, and [day]
+# 5 agree with above
+# accuracy is good but KAppa is bad
+```
+
+# PART 6 - Preprocess - Balancing Data
+# check this section if it needs work - come back to this....
+
+# 4 methods all here....for solving imbalance:
+1. down sampling
+2. up sampling
+3. SMOTE
+4. ROSE
+
+```{r}
+# 4 methods for solving imbalance
+set.seed(30)
+BM_train_sample <- sample(nrow(BM), 0.9 * nrow(BM))
+BM_imbal_train<- BM[BM_train_sample, ]
+BM_imbal_test <- BM[-BM_train_sample, ]
+# NOTE: right now the file is original with factors
+# decide on what dataset you want first i.e. all numbers
+# str(BM_imbal_train)
+# table(BM_imbal_train$y)
+# keep the test set as is, as it should be representative of the real data % of Y
+# now with the training set, we can do 4 ways of fixing imbalance
+# START
+# method 1 - both sample sizes are 4783
+set.seed(30)
+down_train <- downSample(x = BM_imbal_train[, -ncol(BM_imbal_train)],
+                         y = BM_imbal_train$y)
+table(down_train$Class)  
+#
+# method 2 - both sample sizes are 35906
+up_train <- upSample(x = BM_imbal_train[, -ncol(BM_imbal_train)],
+                         y = BM_imbal_train$y)
+table(up_train$Class)
+str(up_train)
+#
+# method 3 - no is 19132 and yes is 14349
+#install.packages("DMwR")
+# library(DMwR)
+# this one is slow
+set.seed(30)
+BM_smote_train <- SMOTE(y ~ ., data  = BM_imbal_train)                         
+table(BM_smote_train$y) 
+#
+# method 4 - no is 20621 and yes is 20068
+# install.packages("ROSE")
+# library(ROSE)
+set.seed(123)
+BM_rose_train <- ROSE(y ~ ., data  = BM_imbal_train)$data                         
+table(BM_rose_train$y) 
+# use a bagged classification and estimate the area under the ROC curve using five repeats of 10-fold CV.
+# try each one above with a model, then use best result going forward for the model
+# then for each model do 10x
+# use '10-fold'???
+```
+
+# PART 7 - Cross-Validation part with Models
+1. large dataset is in 'dated' order so we need to make sure we get random data
+2. we can set up training and test set (and validation set)
+3. then keep using this process for ALL models to standardize as much as possible
+
+simpler methods NOT used:
+
+```{r}
+# method 1 not used: use random_ids to generate random sampling datasets
+#
+# method 2A: holdout method for stratified random sampling
+# partitioned data for train and test sets only 
+library(caret)
+library(lattice)
+library(ggplot2)
+in_train<- createDataPartition(BM$y, p=0.75, list=FALSE)
+BM_train<- BM[in_train,]
+BM_test<-BM[-in_train,]
+#
+# method 2B: holdout method for train, test, validation sets
+# partitioned data adding validation set
+in_train<- createDataPartition(BM$y, p=0.50, list=FALSE)
+BM_train<- BM[in_train,]
+BM_other<- BM[-in_train,]
+other<- createDataPartition(BM_other$y, p=0.50, list=FALSE)
+BM_test<- BM_other[other,]
+BM_validate<- BM_other[-other,]
+#
+# 1. run training model with data -> results
+# 2. run test set with model results of step 1 using predict()
+# 3. run validaton set with model results of step 1
+#
+# method 3: repeated holdout or cross-validation method - 10-fold is standard 
+# Automating 10-fold CV for a C5.0 Decision Tree using lapply() ----
+# example: 
+library(caret)
+library(C50)
+library(irr)
+credit <- read.csv("credit.csv")
+set.seed(123)
+folds <- createFolds(credit$default, k = 10)
+cv_results <- lapply(folds, function(x) {
+  credit_train <- credit[-x, ]
+  credit_test <- credit[x, ]
+  credit_model <- C5.0(default ~ ., data = credit_train)
+  credit_pred <- predict(credit_model, credit_test)
+  credit_actual <- credit_test$default
+  kappa <- kappa2(data.frame(credit_actual, credit_pred))$value
+  return(kappa)
+})
+str(cv_results)
+mean(unlist(cv_results))
+#
+```
+
+# PART 7 - Cross-Validation part with Models
+4. 10-fold Cross validation method - 'best' and the easiest, and Integrated with the Model
+- Let's use trainControl, expand.grid, and train functions
+
+# repeat for ALL  models 
+model:
+data:
+ctrl options:
+grid options:
+model options:
+keep a table of various options (or screenshots) to show which options work best
+plot R-curve with all other models
+AUC value: 
+
+
+# Part 8 - Models
+
+# Part 8 - Model 1 - C5.0 Decision Tree 
+?? pre-prune and post-prune options
+best model options for 'oneSE' function uses model=tree, trials=1, winnow=FALSE
+Kappa= , Accuracy=
+best model options for 'best' function uses model=tree, trials=1, winnow=FALSE
+Kappa= 0.488, Accuracy = 0.903
+Current verson below
+Kappa= 0.4816, Accuracy=0.9077, trials =25 but ~1
+
+```{r}
+# other options: center=TRUE, scale=TRUE
+# lots of options
+# train and test sets combined
+ctrl<- trainControl(method="cv", number = 10, selectionFunction = "best")
+# finally -  use repeatedcv = 10 to do 10x10 
+# c(1,5,10,15,20,25)
+# may or may not use tuning grid - if we leave out, then model will decide the best fit
+grid<- expand.grid(model="tree", trials = c(1,5), winnow=FALSE)
+set.seed(300)
+# m<- train(y ~., data = BM, method = "C5.0", rocc, metric = "Kappa", trControl = ctrl, tuneGrid = grid)
+# metric:"RMSE" and "Rsquared" for regression
+# metric: "Accuracy" and "Kappa" for classification
+m<- train(y ~., 
+          data = BM, 
+          method = "C5.0", 
+          weights=NULL, 
+          metric = "Accuracy", 
+          rocc,
+          trControl = ctrl, 
+          tuneGrid = grid, 
+          tuneLength = 3)
+m
+# m$finalModel
+```
+
+# Part 8 - Model 2 - lazy learning or K-Nearest Neighbours (k-NN)
+# 1a - MODEL 1 KNN chapter 3
+# training and test set
+want to normalize numeric data and center it
+
+```{r}
+# randomize first - to do - since data is in order
+# BM$y is a number
+# look up how to randomly take data from dataset 
+# below is just a way to get it started so i can see results
+BM_norm_train <- BM_norm[1:36168,]
+BM_norm_test <- BM_norm[36169:45211,]
+BM_norm_train_labels <- BM[1:36168, 17]
+BM_norm_test_labels <- BM[36169:45211, 17]
+#data is in order so redo this
+```
+
+# NOTE: need to review all models with sampling techniques....
+
+# Part 8 - Model 2
+
+```{r}
+# install.packages("class")
+# library(class)
+ctrl<- trainControl(method="cv", number = 10, selectionFunction = "oneSE")
+# grid<- expand.grid(model="tree", trials = c(1,5,10,15,20,25,30,35), winnow=FALSE)
+RNGversion("3.5.2")
+set.seed(300)
+# we want to scale and center
+# k parmeter is part of automatic testing so can leave out
+m<- train(y ~., data = BM, method = "knn", metric = "Kappa", trControl = ctrl)
+m
+# simplest:
+# BM_norm_predict<- knn(train = BM_norm_train, test = BM_norm_test, cl = BM_norm_train_labels , k=21) 
+# sqrt of 45211 is 211 but this is too large!!!
+```
+
+get ROC curves and AUC ...tbd
+# Part 8 - model 2
+
+```{r}
+
+library(pROC)
+bank_roc <- roc(bm_results$prob_y, bm_results$actual_type)
+plot(bank_roc, main = "ROC curve for bank", col="blue", lwd = 2, legacy.axes = TRUE)
+# repeat for other models
+auc(bank_roc)
+# repeat for other models
+auc(bank_roc_knn)
+```
+
+# Part 8 - model 2c - evaluate model performance
+
+```{r}
+CrossTable(x = BM_norm_test_labels, y = BM_norm_predict)
+```
+
+so true negative = 77/9043
+true positive  6151/9043
+false negative = 36/9043 OR is (9043 - 36)/9043 = 99.6% accuracy
+false positve = 2779/9043
+
+# Part 8 - model 2d - try to improve model performance
+let's try z-score standardization instead of the normalization used above
+all else is the same
+
+```{r}
+# automatic z-standardization using scale function
+BM_z<- as.data.frame(scale(BM_numeric))
+
+BM_z_train <- BM_z[1:36168,]
+BM_z_test <- BM_z[36169:45211,]
+BM_z_train_labels <- BM[1:36168, 17]
+BM_z_test_labels <- BM[36169:45211, 17]
+BM_z_predict<- knn(train = BM_z_train, test = BM_z_test, cl = BM_z_train_labels , k=21) 
+CrossTable(x = BM_z_test_labels, y = BM_z_predict)
+```
+
+Unfortunately, the results are worse
+now we have 352/9043 incorrectly classified as FN
+
+# Part 8 - model 2e - so lets go back to normalized dataset and retry with different k-values
+
+```{r}
+BM_norm_predict<- knn(train = BM_norm_train, test = BM_norm_test, cl = BM_norm_train_labels, k=27)
+CrossTable(x = BM_norm_test_labels, y = BM_norm_predict)
+```
+
+# Part 8 - model 2f
+# results copied:
+# Table created from changing "k"
+k value   false neg    false pos    % total incorrect/9043
+1         423           2380         31%
+5         127           2624         30.4%  ***
+11        71            2713         30.8%
+15        56            2760         31.1%
+21        36            2779        (36+2779)/9043 = 31.1%
+27        29            2787         31.1%
+
+it looks like regular normalization and k=5 is the best...
+# we will keep this model for later comparison of all models
+
+
+# Part 8 - MODEL 3 Naive Bayes chapter 4
+# Uses factor data
+-Add Laplace estimator of 1
+
+```{r}
+# Create training and test set
+set.seed(123)
+BM_train_sample <- sample(45211, 36168)
+# 
+BM_cat_train<- BM_cat[BM_train_sample, ]
+BM_cat_test <- BM_cat[-BM_train_sample, ]
+#
+BM_cat_train_labels <- BM_cat[BM_train_sample, 17]
+BM_cat_test_labels <- BM_cat[-BM_train_sample, 17]
+# check approx same number of percentages of yes and no
+prop.table(table(BM_cat_train_labels))
+#
+prop.table(table(BM_cat_test_labels))
+```
+
+# *** ABOVE IS SAMPLING - TRY TO USE 10 Fold CV in all models
+
+# Part 8 - model 3 - run the naive bayes model
+
+```{r}
+# install.packages(e1071)
+# library(e1071)
+BM_classifier<- naiveBayes(BM_cat_train, BM_cat_train_labels, laplace = 0)
+BM_test_pred<- predict(BM_classifier, BM_cat_test)
+# library(gmodels)
+CrossTable(BM_cat_test_labels, BM_test_pred, prop.chisq = FALSE, prop.c = FALSE, prop.r = FALSE, dnn = c('actual',  'predicted'))
+```
+
+Naive Bayes results:
+           predicted 
+actual       no      yes     total
+no         7997      0       7997
+yes         0        1046    1046 
+total      7997      1046   9043
+
+WOW!! no false predictions!!!
+accuracy 100% !!!!
+
+
+```{r}
+sms_test_prob <- predict(BM_classifier, BM_cat_train, type = "raw")
+head(sms_test_prob)
+
+# combine the results into a data frame
+sms_results <- data.frame(actual_type = sms_test_labels,
+                          predict_type = sms_test_pred,
+                          prob_spam = round(sms_test_prob[ , 2], 5),
+                          prob_ham = round(sms_test_prob[ , 1], 5))
+```
+
+# Part 8 - model 3
+
+```{r}
+library(pROC)
+sms_roc <- roc(sms_results$actual_type, sms_results$prob_spam)
+
+# ROC curve for Naive Bayes
+plot(sms_roc, main = "ROC curve", col = "blue", lwd = 2, legacy.axes = TRUE)
+
+# compare to kNN 
+sms_results_knn <- read.csv("sms_results_knn.csv")
+sms_roc_knn <- roc(sms_results$actual_type, sms_results_knn$p_spam)
+plot(sms_roc_knn, col = "red", lwd = 2, add = TRUE)
+
+# calculate AUC for Naive Bayes and kNN
+auc(sms_roc)
+auc(sms_roc_knn)
+# mine:
+#
+bank_roc <- roc(bm_results$prob_y, bm_results$actual_type)
+plot(bank_roc, main = "ROC curve for bank", col="blue", lwd = 2, legacy.axes = TRUE)
+# repeat for other models
+auc(bank_roc)
+# repeat for other models
+auc(bank_roc_knn)
+```
+
+
+# Part 8 - model 3
+# PART X:
+lets' just try with laplace =1 (pg122) 
+
+```{r}
+BM_classifier2<- naiveBayes(BM_cat_train, BM_cat_train_labels, laplace = 1)
+BM_test_pred2<- predict(BM_classifier2, BM_cat_test)
+# library(gmodels)
+CrossTable(BM_cat_test_labels, BM_test_pred2, prop.chisq = FALSE, prop.c = FALSE, prop.r = FALSE, dnn = c('actual',  'predicted'))
+```
+
+# Part 8 - model 3
+get same result as one above is already 100%
+# BUT WHAT CLASSIFICATION RESULTS DO WE HAVE ???
+model may be good but we can't SHOW how....
+
+
+# ch 5 C5.0 decision trees
+# see also lines 768-800 where i used model=tree
+# train and test and labels
+# used random sampling because the larger dataset is ordered
+
+```{r}
+RNGversion("3.5.2"); set.seed(123)
+BM_train_sample <- sample(45211, 36168)
+#
+BM_train<- BM[BM_train_sample, ]
+BM_test <- BM[-BM_train_sample, ]
+#
+BM_train_labels <- BM[BM_train_sample, 17]
+BM_test_labels <- BM[-BM_train_sample, 17]
+# check approx same number of percentages of yes and no
+prop.table(table(BM_train_labels))
+#
+prop.table(table(BM_test_labels))
+```
+
+# Part 8 - model 3- now to create the model
+
+```{r}
+# install.packages("C50")
+# library(C50)
+tree_model<- C5.0(BM_train[-17], BM_train_labels, trials=1)
+tree_model
+```
+
+
+# Part 8 - model 3 - check the model
+
+```{r}
+summary(tree_model)
+```
+
+Training dataset:
+Looking at results above, the confusion matrix shows:
+No      Yes
+31324   601=FP
+2749   1494
+which means a total of (2749+601)/36168 =  9.3% error rate
+
+# Part 8 - model 3 - now lets look at the test dataset
+
+```{r}
+# see predictons
+tree_predict<- predict(tree_model, BM_test)
+# library(gmodels)
+CrossTable(x = BM_test_labels, y = tree_predict, prop.chisq = FALSE, prop.c = FALSE, prop.r = FALSE, dnn = c('actual default',  'predicted default'))
+```
+
+# Part 8 - model 3 
+test dataset:
+Results are:
+           predicted 
+actual       no      yes     total
+no         7776      221     7997
+yes         751      295     1046
+total      8527      516     9043
+
+# DIFFERENT:
+error rate  = (739+228)/9043 = 10.7%
+so accuracy rate = 100 - 10.7 = 89.3%
+so the error rate is 1% worse than the training dataset
+
+# improving the model
+1. increase # trials from 1 to say 10
+2. assigning a cost matrix
+
+#  Part 8 - model 3 - improvemnt #1
+
+```{r}
+tree_model<- C5.0(BM_train[-17], BM_train_labels, trials=10)
+tree_model
+summary(tree_model)
+```
+
+Training dataset Results:
+error rate  = (2637+505)/36168 = 8.7%
+so accuracy rate = 100 - 8.7 = 91.3%
+the error rate dropped from 9.3% to 8.7%
+
+Now let's review the test data:
+
+#  Part 8 - model 3 - see predictions
+
+```{r}
+tree_predict_10<- predict(tree_model, BM_test)
+# library(gmodels)
+CrossTable(x = BM_test_labels, y = tree_predict_10, prop.chisq = FALSE, prop.c = FALSE, prop.r = FALSE, dnn = c('actual default',  'predicted default'))
+```
+
+# Part 8 - model 3 
+boosted model - test dataset Results are:
+           predicted 
+actual       no      yes     total
+no         7776      221(FP)7997
+yes         751      295     1046
+total      8527      516     9043
+
+error rate  = (751+221)/9043 = 10.7%
+so FN went up but FP went down
+so accuracy rate = 100 - 10.7 = 89.3%
+so the overall error rate is the same as the original test dataset
+
+but compared to the training set:
+error rate is 10.7% vs 8.7% training
+
+#  Part 8 - model3 - improvement #2
+2. assigning a 2x2 cost matrix
+
+```{r}
+matrix_dim<- list(c("no", "yes"), c("no", "yes"))
+names(matrix_dim)<- c("predicted", "actual")
+error_cost<- matrix(c(0,1,4,0), nrow=2, dimnames= matrix_dim)
+#error_cost
+tree_model_cost<- C5.0(BM_train[-17], BM_train_labels, trials=1, costs=error_cost)
+tree_predict_cost<- predict(tree_model_cost, BM_test)
+# library(gmodels)
+CrossTable(x = BM_test_labels, y = tree_predict_cost, prop.chisq = FALSE, prop.c = FALSE, prop.r = FALSE, dnn = c('actual default',  'predicted default'))
+```
+
+# Part 8 - model 3 
+Results are:
+           predicted 
+actual       no      yes     total
+no         7097      900     7997
+yes         392      654     1046
+total      7489     1554     9043
+error rate  = (392+900)/9043 = 14.3%
+
+Comparing this to the boosted model on lines 489+
+this error rate increased from 10.7%
+but the FN dropped by half while the FP went up over 4x
+And Accuracy dropped, so this model not so good
+
+# Part 8 -
+# Other classification models
+1. 1R or OneR
+2. RIPPER or JRip - good for categorical data
+Assume the dataset is an exhaustive set therefore no training/test split will be done
+leave code below for now but copy in the datafile for 10-fold validation to do this
+
+USE dataset that is all categorical
+from row 375 - PART 3 - CONVERSIONS - use BM_fact dataset
+
+#  Part 8 - model 4 - OneR - poutcome is best result
+
+```{r}
+#install.packages("OneR")
+library(OneR)
+# all data is now categorical
+# last argument must be Y 
+BM_1R_model<- OneR(y ~., data=BM_fact)
+BM_1R_model
+# summary(BM_1R_model)
+# plot(BM_1R_model)
+```
+
+so poutcome is the only and greatest factor used, and
+if poutcome = success then y = 'yes', otherwise y = 'no'
+accuracy is 89.29%
+
+#  Part 8 - model 4 - let's see confusion matrix
+```{r}
+BM_1R_predict<- predict(BM_1R_model, BM)
+table(actual = BM$y, predicted = BM_1R_predict)
+```
+
+#  Part 8 - model 4 - The 4311 as FN is not good
+
+         predicted
+actual    no    yes
+  no    39389   533
+  yes    4311   978
+
+# REBALANCE FIRST?? 
+
+#  Part 8 - model 5 - Other classification models: RIPPER or JRip 
+
+```{r}
+# JRip is in RWeka package
+library(RWeka)
+BM_JRip_model<- JRip(y ~., data=BM)
+BM_JRip_model
+# all 12 rules for JRip are for 'yes' which is what we want
+```
+
+Results 1 copied below:
+
+JRIP rules:
+===========
+
+(poutcome = success) => y=yes (1511.0/533.0)
+(duration = B) => y=yes (1005.0/404.0)
+(housing = no) and (contact = cellular) and (month = apr) and (marital = single) and (poutcome = unknown) => y=yes (218.0/102.0)
+(housing = no) and (contact = cellular) and (month = jun) and (marital = married) and (day = B) => y=yes (16.0/4.0)
+(housing = no) and (contact = cellular) and (loan = no) and (age = B) and (job = student) and (poutcome = other) => y=yes (35.0/15.0)
+(contact = cellular) and (housing = no) and (loan = no) and (month = sep) and (day = C) => y=yes (50.0/17.0)
+(housing = no) and (contact = cellular) and (month = jun) and (day = A) and (job = blue-collar) => y=yes (18.0/5.0)
+(contact = cellular) and (housing = no) and (loan = no) and (month = mar) => y=yes (256.0/125.0)
+(housing = no) and (contact = cellular) and (month = jun) and (poutcome = other) => y=yes (33.0/15.0)
+(housing = no) and (contact = cellular) and (month = jun) and (job = admin.) and (marital = married) and (loan = no) => y=yes (16.0/4.0)
+(contact = cellular) and (housing = no) and (month = oct) and (day = E) => y=yes (87.0/39.0)
+ => y=no (41966.0/3307.0)
+
+Number of Rules : 12
+
+Results 2 copied below:
+
+JRIP rules:
+===========
+
+(duration >= 13.95) and (contact = cellular) => y=yes (1160.0/440.0)
+(duration >= 20.45) => y=yes (188.0/81.0)
+(duration >= 14.516667) and (day >= 30) => y=yes (19.0/4.0)
+(contact = cellular) and (duration >= 13.466667) => y=yes (113.0/51.0)
+(duration >= 4.333333) and (poutcome = success) => y=yes (658.0/147.0)
+(duration >= 10.8) and (contact = cellular) and (duration <= 12.516667) and (day <= 16) => y=yes (292.0/125.0)
+(balance >= 754) and (duration >= 13.883333) => y=yes (147.0/63.0)
+(duration >= 3.433333) and (housing = no) and (pdays >= 9) and (poutcome = success) => y=yes (161.0/37.0)
+(marital = single) and (duration >= 11.166667) and (contact = cellular) => y=yes (129.0/62.0)
+(duration >= 7.883333) and (housing = no) and (age >= 59) and (duration <= 8.433333) => y=yes (37.0/12.0)
+(duration >= 9.75) and (housing = no) and (day <= 11) and (age >= 51) => y=yes (81.0/38.0)
+(housing = no) and (campaign <= 1) and (balance <= 799) and (duration <= 9.8) and (duration >= 9.333333) => y=yes (33.0/9.0)
+(duration >= 5.383333) and (housing = no) and (month = apr) => y=yes (190.0/75.0)
+(housing = no) and (duration >= 6.083333) and (age >= 60) and (duration <= 6.95) and (balance <= 661) => y=yes (27.0/8.0)
+(duration >= 12.416667) and (age >= 43) and (day >= 20) => y=yes (59.0/21.0)
+(duration >= 3.083333) and (housing = no) and (pdays >= 10) and (poutcome = success) and (day <= 15) and (previous <= 2) => y=yes (21.0/2.0)
+(duration >= 3.366667) and (housing = no) and (balance >= 948) and (poutcome = other) and (day >= 12) and (pdays >= 163) => y=yes (51.0/16.0)
+ => y=no (41844.0/3114.0)
+
+Number of Rules : 18
+
+The last rule basically means "Else, the answer is No"
+So the first n-1 (i.e. 17) rules show what attributes are valuable for decision
+
+```{r}
+BM_JRip_predict<- predict(BM_JRip_model, BM)
+table(actual = BM$y, predicted = BM_JRip_predict)
+```
+
+#  Part 8 - model 5 - The 3114 as FN is not good
+
+         predicted
+actual    no    yes
+  no    38730   1191
+  yes    3114   2175
+
+# REBALANCE FIRST?? 
+
+# come back to this later as ch.11 will show how to make better decision trees with a random forest model
+
+#  Part 8 - model x - REGRESSION MODELS BELOW
+Regression assumes normality and no skewing, multicollinearity
+also have
+-linear model DONE
+-logistic regression for a binary outcome (which we have)
+-poisson regression - for integer count data
+-multinomial logistic regression - models categorical outcome
+
+we need ALL numeric data
+# NOTE: initial numeric data is NOT normalized
+
+# build a model.....
+if p<0.05 then the independent variables are significant and should be included
+this is with the full dataset so the answer is for y=yes outcome
+
+# Part 8 - model x
+```{r}
+# library(faraway)
+# use BM_num done above
+# y must be numeric too
+BM_num2<- BM_num
+BM_num2$y<- ifelse(BM_num2$y==c("yes"), 1, 0)
+g1 <- lm(BM_num2$y ~ ., data=BM_num2)
+# str(BM_num2)
+# g1
+summary(g1)
+```
+
+# Part 8 - model x
+build a better model
+# 1. delete day [10] and default [5]
+# 2. take out job [2]
+# r2 is real low - only 24%
+
+```{r}
+# str(BM_num2)
+# delete all attributes above that have insignificant p-value
+# now take out the remaining factors one at a time
+str(BM_num2)
+BM_num2<-BM_num2[-10]
+BM_num2<-BM_num2[-5]
+#
+BM_num2<-BM_num2[-2]
+g2 <- lm(BM_num2$y ~ ., data=BM_num2)
+# str(BM_num2)
+# g1
+summary(g2)
+```
+
+# Part 8 - model x
+
+Note that the model fitness overall is low with R-sq = 25% only
+# so the model is NOT very good
+We can see from above that the remaining attributes are all important (p<0.05)
+These are the ones not deleted in the code above
+
+the answers below are from using dummy variables - these are then:
+cont:cellular, telephone (so either way is fine since this is how bank calls client)
+pout:failure, success, other (so not telling us anything)
+jobs: 6 is retired and 9 is student
+mon: january to August, November
+SO best attributes for a Yes are:
+1. the client is retired or a student
+2. that the months to call is any month BUT (sept, oct, dec)
+
+# model using scaled numeric data
+now run the same first model
+NORMALIZE THE DATASET THEN TRY HERE **********
+
+```{r}
+g3 <- lm(BM_norm$y ~ ., data=BM_norm)
+# g1
+summary(g3)
+# not going further wih this model because we still get R-sq = 30%
+```
+
+# Part 8 - model x
+
+MAYBE ONLY DO REGRESSION WITH ORIGINAL NUMERIC ATTRiBUTES?
+# REGRESSION MODELS BELOW
+NORMALIZE THE DATASET THEN TRY HERE **********
+# use numeric data set but normalize the previous 'numeric' data first
+# forward, backward in week 11 but getting error message
+# those above are for numeric data
+Regression assumes normality and no skewing, multicollinearity
+# - see class notes
+-logistic regression for a binary outcome (which we have)
+-poisson regression - for integer count data
+-multinomial logistic regression - models categorical outcome
+
+NEW
+Regression trees and model trees ch6 in textbook
+copy to code from chapter 6
+
+# Part 8 - model x
+
+# Forward selection algorithm
+
+```{r}
+# factors?
+install.packages("RCurl")
+install.packages("FNN")
+install.packages("MASS")
+install.packages("Leaps")
+library(RCurl)
+library(FNN)
+# MASS needs pred ?
+# library(MASS)
+library(Leaps)
+# y must be a number
+BM_mini_num_01<- BM_mini_num
+BM_mini_num_01$y<- ifelse(BM_mini_num_01$y==c("yes"), 1, 0)
+full<- lm(y~., data = BM_mini_num)
+null<- lm(y~1, data = BM_mini_num)
+stepF<- stepAIC(null, scope=list(lower=null, upper=full), direction="forward", trace=TRUE)
+summary(stepF)
+```
+
+# Part 8 - model x
+
+# backward elimination
+
+```{r}
+full<- lm(y~., data = BM_mini_num)
+stepB<- stepAIC(full, direction="backward", trace=TRUE)
+summary(stepB)
+```
+
+# Part 8 - model x
+
+# both
+```{r}
+full<- lm(y~., data = BM_mini_num)
+null<- lm(y~1, data = BM_mini_num)
+stepF<- stepAIC(null, scope=list(lower=null, upper=full), direction="both", trace=TRUE)
+summary(stepF)
+```
+
+# Part 8 - model x
+
+# best subsets
+```{r}
+subsets<- regsubsets(y~., data=BM_mini_num, nbest=1)
+sub.sum<- summary(subsets)
+as.data.frame(sub.sum$outmat)
+```
+
+
+
+
