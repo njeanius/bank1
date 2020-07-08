@@ -12,8 +12,9 @@ knitr::opts_chunk$set(echo = TRUE)
 ```
 
 ## Project: Portuguese Bank Marketing Data
-# note: go to step 9 to get to model section and new datasets
-# Step 1: install the packages required
+# note: go to Part 2 (~line 319) to get to new datasets
+# and part 8 (~line 900) is models section
+# Step 1: packages required
 
 ```{r}
 # install.packages("lattice")
@@ -42,12 +43,14 @@ BM_mini <- read.csv("/Users/jeanwills/Desktop/CKME136/bank.csv", header=T, sep =
 #str(BM)
 # let's check number of complete cases for no data missing at all -> no missing data!
 sum(complete.cases(BM))
+sum(complete.cases(BM_mini))
 ```
 
 # step 2 - Look at the bank data summary
+ALL DATA is now for BM_mini as BM is too large a dataset to work on with a MacBook Air
 
 ```{r}
-summary(BM)
+summary(BM_mini)
 # we see that 7 attributes are numeric and the rest are now factors
 # we will come back to this and change the classes where required
 #
@@ -61,13 +64,13 @@ summary(BM)
 ```{r}
 # age has outliers above ~70
 par(mfrow=c(1,4))
-boxplot(BM$age, main = "Client's age")
+boxplot(BM_mini$age, main = "Client's age")
 # balance has a large number of outliers above Q3
-boxplot(BM$balance, main = "Balance")
+boxplot(BM_mini$balance, main = "Balance")
 # day has a large number of outliers above Q3
-boxplot(BM$day, main = "day called on")
+boxplot(BM_mini$day, main = "day called on")
 # duration has a large number of outliers above Q3
-boxplot(BM$duration, main = "call duration (sec)")
+boxplot(BM_mini$duration, main = "call duration (sec)")
 ```
 
 # Step 3b
@@ -75,11 +78,11 @@ boxplot(BM$duration, main = "call duration (sec)")
 ```{r}
 par(mfrow=c(1,3))
 # camapign has a large number of outliers above the Q3
-boxplot(BM$campaign, main = "Boxplot of campaign")
+boxplot(BM_mini$campaign, main = "Boxplot of campaign")
 # pdays has a VERY large number of outliers above Q3
-boxplot(BM$pdays, main = "Boxplot of pdays")
+boxplot(BM_mini$pdays, main = "Boxplot of pdays")
 # duration has a large number of outliers above Q3
-boxplot(BM$previous, main = "Boxplot of previous")
+boxplot(BM_mini$previous, main = "Boxplot of previous")
 ```
 
 # Step 4a: plot histograms to reveal skewness / normality
@@ -87,13 +90,13 @@ boxplot(BM$previous, main = "Boxplot of previous")
 ```{r}
 par(mfrow=c(1,4))
 # age looks skewed right
-hist(BM$age, main = "Hist - Age", breaks = 5)
+hist(BM_mini$age, main = "Hist - Age", breaks = 5)
 # balance is skewed right
-hist(BM$balance, main = "Hist - Balance", breaks = 5)
+hist(BM_mini$balance, main = "Hist - Balance", breaks = 5)
 # day somewhat skewed right
-hist(BM$day, main = "Hist - day", breaks = 10)
+hist(BM_mini$day, main = "Hist - day", breaks = 10)
 # duration is skewed right
-hist(BM$duration, main = "Hist - call duration", breaks = 5)
+hist(BM_mini$duration, main = "Hist - call duration", breaks = 5)
 ```
 
 # Step 4b
@@ -101,11 +104,11 @@ hist(BM$duration, main = "Hist - call duration", breaks = 5)
 ```{r}
 par(mfrow=c(1,3))
 # campaign is skewed right - most data is in 1 day
-hist(BM$campaign, main = "Histogram of campaign", breaks = 5)
+hist(BM_mini$campaign, main = "Histogram of campaign", breaks = 5)
 # pdays skewed right
-hist(BM$pdays, main = "Histogram of pdays", breaks = 5)
+hist(BM_mini$pdays, main = "Histogram of pdays", breaks = 5)
 # previous skewed right
-hist(BM$previous, main = "Histogram of previous", breaks = 5)
+hist(BM_mini$previous, main = "Histogram of previous", breaks = 5)
 ```
 
 # 4c logs of the numeric data and replot the histograms...
@@ -115,13 +118,14 @@ keep for now
 ```{r}
 # day is somewhat better in the original histogram but will still change to be consistent
 # NaNs produced.....need # >1.0 - balance and duration would need adjustments
-BM_log<-BM
-BM_log$age<-log(BM$age)
+BM_log<-BM_mini
+#
+BM_log$age<-log(BM_mini$age)
 # balance has negative values 
-BM_log$balance<-log(BM$balance)
-BM_log$day<-log(BM$day)
+BM_log$balance<-log(BM_mini$balance)
+BM_log$day<-log(BM_mini$day)
 # duration has zeros
-BM_log$duration<-log(BM$duration)
+BM_log$duration<-log(BM_mini$duration)
 #
 par(mfrow=c(1,4))
 hist(BM_log$age, main = "log(Age)", breaks = 5)
@@ -134,11 +138,11 @@ hist(BM_log$duration, main = "log(call duration)", breaks = 10)
 
 ```{r}
 # NaNs produced.....need # >1.0 - pdays and previous would need adjustments
-BM_log$campaign<-log(BM$campaign)
+BM_log$campaign<-log(BM_mini$campaign)
 # pdays has -1
-BM_log$pdays<-log(BM$pdays)
+BM_log$pdays<-log(BM_mini$pdays)
 # previous has 0 and 1
-BM_log$previous<-log(BM$previous)
+BM_log$previous<-log(BM_mini$previous)
 # str(BM_log)
 par(mfrow=c(1,3))
 hist(BM_log$campaign, main = "log(campaign)", breaks = 5)
@@ -151,10 +155,10 @@ hist(BM_log$previous, main = "log(previous)", breaks = 5)
 
 ```{r}
 par(mfrow=c(1,2))
-qqnorm(BM$age, main = "Norm Q-Q plot of Age")
-qqline(BM$age)
-qqnorm(BM$balance, main = "Norm Q-Q plot of balance")
-qqline(BM$balance)
+qqnorm(BM_mini$age, main = "Norm Q-Q plot of Age")
+qqline(BM_mini$age)
+qqnorm(BM_mini$balance, main = "Norm Q-Q plot of balance")
+qqline(BM_mini$balance)
 # both not normal
 ```
 
@@ -162,10 +166,10 @@ qqline(BM$balance)
 
 ```{r}
 par(mfrow=c(1,2))
-qqnorm(BM$day, main = "Norm Q-Q plot of day")
-qqline(BM$day)
-qqnorm(BM$duration, main = "Norm Q-Q plot of duration")
-qqline(BM$duration)
+qqnorm(BM_mini$day, main = "Norm Q-Q plot of day")
+qqline(BM_mini$day)
+qqnorm(BM_mini$duration, main = "Norm Q-Q plot of duration")
+qqline(BM_mini$duration)
 # both not normal
 ```
 
@@ -173,12 +177,12 @@ qqline(BM$duration)
 
 ```{r}
 par(mfrow=c(1,3))
-qqnorm(BM$campaign, main = "Norm Q-Q plot of campaign")
-qqline(BM$campaign)
-qqnorm(BM$pdays, main = "Norm Q-Q plot of pdays")
-qqline(BM$pdays)
-qqnorm(BM$previous, main = "Norm Q-Q plot of previous")
-qqline(BM$previous)
+qqnorm(BM_mini$campaign, main = "Norm Q-Q plot of campaign")
+qqline(BM_mini$campaign)
+qqnorm(BM_mini$pdays, main = "Norm Q-Q plot of pdays")
+qqline(BM_mini$pdays)
+qqnorm(BM_mini$previous, main = "Norm Q-Q plot of previous")
+qqline(BM_mini$previous)
 # all 3 not normal
 ```
 
@@ -207,9 +211,9 @@ Spearman method - if p<0.05 means NOT correlated
 # if p<0.05 then significant meaning correlated
 # simple example with 2 variables
 # if we do this, we need y as numeric 0/1
-# cor.test(BM$previous,BM$age, method="spearman")
-# cor.test(BM$previous,BM$age)
-# also: cor(BM$previous,BM$age)
+# cor.test(BM_mini$previous,BM$age, method="spearman")
+# cor.test(BM_mini$previous,BM$age)
+# also: cor(BM_mini$previous,BM$age)
 ```
 
 # Step 7b: Table of correlations for all data
@@ -219,7 +223,8 @@ Spearman method - if p<0.05 means NOT correlated
 # test ALL data for correlations
 library(lattice)
 library(ggplot2)
-BM_num<-BM
+BM_num<-BM_mini
+#
 # num<- subset(BM_01, select = c("age", "balance", "day", "duration", "campaign", "pdays", "previous", "y"))
 BM_num$job<- as.numeric(BM_num$job)  #12
 BM_num$marital<- as.numeric(BM_num$marital) #4
@@ -255,9 +260,9 @@ previous to pdays is 0.455 (mild positive)
 ```{r}
 library(plyr)
 library(GGally)
-library(ggplot2)
+# library(ggplot2)
 library(reshape2)
-library(caret)
+# library(caret)
 # BM_num was created above
 # leaving out y so only 16 not 17
 # this one prints extra info -  ggpairs(BM_num[, c(1,16)])
@@ -274,19 +279,21 @@ ggplot(bnk_melt, aes(x=x, y=y)) +
   labs(x=NULL, y=NULL)
 ```
 
+we see that previous to pdays is 0.5775 and that's the highest correlation
+
 # Step 7d: scatterplot matrix of the numeric data - (this takes a bit of time)
 
 ```{r}
-# BM_num created above 
 library(psych)
 # pairs works too
 # top right part shows correlations, diagonal shows histograms, and bottom left shows the
 # scatterplots, with the circles showing strength of correlation (circle~little, oval~lot)
 # took out y in the end
-pairs.panels(BM[c("age","balance","day","duration","campaign","pdays","previous")])
+pairs.panels(BM_mini[c("age","balance","day","duration","campaign","pdays","previous")])
 ```
 
 # Step 8a: Pearson chi-sq test for correlations of non-numeric data
+
 # this is a sample of what could be done if we did not do the heat map above
 Also:
 chisq.test(table(BM$job, BM$marital))$expected
@@ -304,87 +311,73 @@ chisq.test(BM$job, BM$education)
 # extra - test y with all categorical attributes against it
 
 ```{r}
-chisq.test(BM$y, BM$job)
-chisq.test(BM$y, BM$marital)
-chisq.test(BM$y, BM$education)
-chisq.test(BM$y, BM$housing)
-chisq.test(BM$y, BM$loan)
-chisq.test(BM$y, BM$contact)
-chisq.test(BM$y, BM$month)
-chisq.test(BM$y, BM$poutcome)
+chisq.test(BM_mini$y, BM_mini$job)
+chisq.test(BM_mini$y, BM_mini$marital)
+chisq.test(BM_mini$y, BM_mini$education)
+chisq.test(BM_mini$y, BM_mini$housing)
+chisq.test(BM_mini$y, BM_mini$loan)
+chisq.test(BM_mini$y, BM_mini$contact)
+chisq.test(BM_mini$y, BM_mini$month)
+chisq.test(BM_mini$y, BM_mini$poutcome)
 # all p-values ~ zero - this is not good! we want correlation!!
 ```
 
-# PART 2: "HOUSE OF DATA CONVERSIONS"
+# PART 2: "HOUSE OF DATA CONVERSIONS" - FIXING DATA
 # start fresh from here....
 1. read in files 
-KEEPING DEFAULT for now
+KEEPING DEFAULT attribute for now
 2a. the max # of contacts was 275 which is way too large=> delete
 2b. switch -1 -> 0 in 'pdays'
 2c. switch duration in seconds to minutes for easier use
 and keep BM, BM_01, and BM_num, BM_mini datasets, etc....
 
+# keeping unknowns in attributes for now
+# BM_mini version - can use same code EXCEPT for numeric to nominal - this is most likely different 
+
 ```{r}
 # step 1 - read in fresh files
 library(dplyr)
 BM <- read.csv("/Users/jeanwills/Desktop/CKME136/bank_full.csv", header=T, sep = ";", stringsAsFactors = T, na.strings = "NA")
+# BM_mini <- read.csv("/Users/jeanwills/Desktop/CKME136/bank.csv", header=T, sep = ";", stringsAsFactors = T, na.strings = "NA")
+# BM<- BM_mini
 # step 2 -  make changes
-# nope - may delete later - attribute 'default' in column 5
+# may delete later - attribute 'default' in column 5
 # BM<- select(BM,-5)
-# specific deletion where BM$previous == 275 then delete it
+# specific deletion where BM$previous == 275 
 BM<- BM[grep("275", BM$previous, invert=TRUE),]
 # switch -1 -> 0 in 'pdays'
 BM$pdays<- ifelse(BM$pdays == "-1", 0, BM$pdays)
+# switch duration in seconds to minutes for easier use
 BM$duration<- BM$duration/60
 # now copy to other datasets, depending on what to do
 ```
 
-for BM_01:
+# IF we want $y to be 0/1
+
 ```{r}
+#
+BM$y<- ifelse(BM$y==c("yes"), 1, 0)
 #
 BM_01 <- BM
 BM_01$y<- ifelse(BM_01$y==c("yes"), 1, 0)
+#
+BM_num$y<- ifelse(BM_num$y==c("yes"), 1, 0)
 ```
 
-
-===================================================
-# EXTRA: to delete when done
-#arules
-arules: res <- discretize(df$b, method = "frequency", breaks = 3)
-recipes: discretize(x, method = "frequency", breaks = 3, 
-  labels = NULL, include.lowest = TRUE, right = FALSE, dig.lab = 3,
-  ordered_result = FALSE, infinity = FALSE, onlycuts = FALSE, 
-  categories, ...)
-  
-# equal interval width
-table(discretize(x, method = "interval", breaks = 3))
-hist(x, breaks = 20, main = "Equal Interval length")
-abline(v = discretize(x, method = "interval", breaks = 3, 
-  onlycuts = TRUE), col = "red")
-
-### k-means clustering 
-table(discretize(x, method = "cluster", breaks = 3))
-hist(x, breaks = 20, main = "K-Means")
-abline(v = discretize(x, method = "cluster", breaks = 3, 
-  onlycuts = TRUE), col = "red")
-
-### user-specified (with labels)
-table(discretize(x, method = "fixed", breaks = c(-Inf, 6, Inf), 
-    labels = c("small", "large")))
-
-===================================================
-
-# PART 3 - CONVERSIONS
-# Part 3 - step 1: Conversion - numeric to nominal - RESULT is BM_fact
+# PART 2 - CONVERSIONS
+# Part 2 - step 1: Conversion - numeric to nominal - RESULT is BM_fact
 method 1: equal frequency: manually using quantiles to break up the data
 method 2: equal width = (max - min)/k, where k is the # of groupings that you choose
-# I am using method 1
 
 ```{r}
 # Conversion from Numeric to Categorical
-# using method 1: approx. equal frequency -with trial and error
-# 6 numeric to transform: age, balance, day, duration, campaign, pdays, previous
-# note one of my textbooks does this automatically with quantile...TO DO
+# using method 1: approx. equal frequency - manually with trial and error
+# 7 numeric to transform: age, balance, day, duration, campaign, pdays, previous
+# set up to work with BM, also works for BM_mini
+#
+# if not manual, do something like:
+# BM_fact$age<- cut(BM_fact$age, breaks = quantile(BM_fact$age, c(0, 0.25, 0.50, 0.75, 1), na.rm=TRUE, include.lowest=TRUE ))
+#
 BM_fact<- BM
 # age: (95-18)/5 = ~15 year breaks
 BM_fact$age<- cut(BM_fact$age, breaks = c(0,33,39,48,100), labels = c("18-33", "33-39", "39-48", "48-95"))
@@ -395,13 +388,15 @@ BM_fact$duration<- cut(BM_fact$duration, breaks = c(-1,2,3,5,90), labels = c("0-
 BM_fact$campaign<- cut(BM_fact$campaign, breaks = c(0, 2, 3, 70), labels = c("1-2", "2-3", "over3")) 
 BM_fact$pdays<- cut(BM_fact$pdays, breaks = c(-1,100,200,400,600,800,1000), labels = c("0-100", "100-200","200-400","400-600","600-800","over800")) 
 BM_fact$previous<- cut(BM_fact$previous, breaks = c(-1,1,10,20,30,60), labels = c("0-1", "1-10","10-20","20-30","over30")) 
-# result: BM_fact wih only categorical data
+str(BM_fact)
+summary(BM_fact)
 ```
 
-# Part 3 - step 2: Conversion A- Categorical to Numeric - RESULT is BM_num
+# Part 2 - step 2a: Conversion A- Categorical to Numeric - RESULT is BM_num
 # (numeric still NOT normalized/scaled)..
 
 ```{r}
+# 
 BM_num <- BM
 BM_num$job<- as.numeric(BM_num$job)  #12
 # marital: 1-single, 2-married, 3-divorced
@@ -434,8 +429,7 @@ BM_num$poutcome<- ifelse(BM_num$poutcome == c("failure"), 1, ifelse(BM_num$poutc
 # result: BM_num with only numeric data (NOT scaled)
 ```
 
-# Part 3 - step 2: Conversion B- Categorical to Numeric - as dummy variables
-# RESULT is BM_dummy
+# Part 2 - step 2b: Conversion B- Categorical to Numeric - as dummy variables - RESULT is BM_dummy
 # numeric still NOT normalized/scaled
 
 # BM$y<- factor(BM$y, levels = c("yes", "no"), labels = c("yes", "no"))
@@ -494,8 +488,8 @@ BM_dummy$pout3 <- ifelse(BM_dummy$poutcome == c("other"), 1, 0)
 # ok so we end up with a lot - then we have to delete the original Factor attributes
 ```
 
-next step in this process...
-# Part 3 - step 2 Conversion B cont'd. take out the original attributes and the answer Y column
+next step in step 2b process...
+# Part 2 - step 2 Conversion B cont'd. take out the original attributes and the answer Y column
 # RESULT: BM_dummy 
 
 ```{r}
@@ -518,21 +512,7 @@ BM_dummy<- cbind(BM_dummy, BM_y)
 # result: BM_dummy with dummies for categorical = > all numeric (still not scaled)
 ```
 
-# Part 3 - step 3: Conversion - BM_mini version - then use same code above
-# EXCEPT for numeric to nominal - this is most likely different ************ 
-# need to check first
-
-```{r}
-BM_mini <- read.csv("/Users/jeanwills/Desktop/CKME136/bank.csv", header=T, sep = ";", stringsAsFactors = T, na.strings = "NA")
-# nope - may delete later - attribute 'default' in column 5
-# BM_mini<- select(BM_mini,-5)
-# switch -1 -> 0 in 'pdays'
-BM_mini$pdays<- ifelse(BM_mini$pdays == "-1", 0, BM_mini$pdays)
-BM_mini$duration<- BM_mini$duration/60
-# now have BM_mini
-```
-
-# PART 4 - SCALE original NUMERIC DATA - 2 methods to use
+# PART 3 - SCALE original NUMERIC DATA - 2 methods to use
 for models that use (i.e. Euclidian) distance between 2 points or require normal data (regression, PCA, etc.)
 2 methods of normalizing numeric data:
 1. Use min-max normalization: x_new = (x - x_min) / (x_max - x_min)
@@ -542,12 +522,12 @@ code for generic version then can swap in datasets:
 step 1: BM-> BM_scale, BM_z
 step 2: BM_num-> BM_num_scale, BM_num_z
 
-# Part 4 - step 1a - BM-> BM_scale
+# Part 3 - step 1a - BM-> BM_scale
 
 ```{r}
 # KEEP: age-1, balance-6, day-10, duration-12, campaign-13, pdays-14, previous-15
 BM_step<-BM
-# use grep ?
+#
 BM_step<-BM_step[-17]
 BM_step<-BM_step[-16]
 BM_step<-BM_step[-11]
@@ -562,8 +542,9 @@ BM_step<-BM_step[-2]
 normalize<- function(x) {
   return ((x - min(x)) / (max(x) - min(x)))
 }
+# normalize the original numeric data
 BM_scale<- as.data.frame(lapply(BM_step[1:7], normalize))
-# now recombine dataframes with the nominal components
+# now add back the nominal components
 BM_scale$job<-BM$job
 BM_scale$marital<-BM$marital
 BM_scale$education<-BM$education
@@ -581,12 +562,12 @@ BM_scale$y<-BM$y
 # BM_scale$y<- ifelse(BM_scale$y==c("yes"), 1, 0)
 ```
 
-# Part 4 - step 1b - BM-> BM_z
+# Part 3 - step 1b - BM-> BM_z
 
 ```{r}
 # KEEP: age-1, balance-6, day-10, duration-12, campaign-13, pdays-14, previous-15
 BM_step<-BM
-# use grep ?
+#
 BM_step<-BM_step[-17]
 BM_step<-BM_step[-16]
 BM_step<-BM_step[-11]
@@ -602,8 +583,10 @@ BM_step<-BM_step[-2]
 z_norm<- function(x) {
   return ((x - mean(x)) / sd(x))
 }
+# normalize the original numeric data
 BM_z<- as.data.frame(lapply(BM_step[1:7], z_norm))
 # now recombine dataframes with the nominal components
+# at this stage we only have numeric data
 BM_z$job<-BM$job
 BM_z$marital<-BM$marital
 BM_z$education<-BM$education
@@ -620,14 +603,15 @@ BM_z$y<-BM$y
 # BM_z$y<- ifelse(BM_z$y==c("yes"), 1, 0)
 ```
 
-# Part 4 - step 2a - BM_num-> BM_num_scale
+# Part 3 - step 2a - BM_num or BM_dummy -> BM_num_scale
+You must do Part 2 -step 2a first
+And copying BM_num (originally cat) over
 
 ```{r}
 # KEEP: age-1, balance-6, day-10, duration-12, campaign-13, pdays-14, previous-15
 # run section of code above in Part 3 step 2, to get BM_num first (or BM_dummy)
-# or BM_step<- BM_dummy
-BM_step<-BM_num
-# use grep ?
+BM_step<- BM_dummy
+# BM_step<-BM_num
 BM_step<-BM_step[-17]
 BM_step<-BM_step[-16]
 BM_step<-BM_step[-11]
@@ -661,13 +645,14 @@ str(BM_num_scale)
 # BM_num_scale$y<- ifelse(BM_num_scale$y==c("yes"), 1, 0)
 ```
 
-# Part 4 - step 2b - BM_num-> BM_num_z  
+# Part 3 - step 2b - BM_num or BM_dummy -> BM_num_z  
+You must do Part 2 -step 2a first
+And copying BM_num (originally cat) over
 
 ```{r}
 # KEEP: age-1, balance-6, day-10, duration-12, campaign-13, pdays-14, previous-15
-# or BM_step<- BM_dummy
-BM_step<-BM_num
-# use grep ?
+BM_step<- BM_dummy
+# BM_step<-BM_num
 BM_step<-BM_step[-17]
 BM_step<-BM_step[-16]
 BM_step<-BM_step[-11]
@@ -701,62 +686,63 @@ BM_num_z$y<-BM_num$y
 # BM_num_z$y<- ifelse(BM_num_z$y==c("yes"), 1, 0)
 ```
 
-# ok down to here
+# TO FINISH - CHECK RESEARCH AND COMPARE
 
-# PART 5 - Feature Selection Methods
-# OK come back to this 
+# PART 4 - Feature Selection Methods
+
 Feature Selection Methods 1 - 3:
 # 1: Use correlations   -see step 7c above - no change
 # 2: Rank Features By Importance - i.e. LVQ - see below
 # 3: Use Random Forest - see below
+# 4: Use PCA-kNN
 
-NOTE: we can do feature selection on its own or as part of models ***
+# NOTE: we can do feature selection on its own or as part of models ***
 
-# Part 5 - #2 Feature Selection - Neural Network method - ALL numeric data
+# Part 4 - #2 Feature Selection - Neural Network method - ALL numeric data
 Learning Vector Quantization algorithm (LVQ) is an artificial neural network algorithm
-? preprocess = scale means it is scaling?
-10-fold repeated 5 times
-should be 10 x 10
+number=10-fold, repeated 10 times
 
 ```{r}
-# this version only uses ALL numeric data from mini-set 
-set.seed(7)
+# this version only uses ALL numeric data from BM_mini
+# run code for BM transforms to BM_num ~step 2a
 # y stays as a category
 # num<- subset(BM_mini_num, select = c("age", "balance", "day", "duration", "campaign", "pdays", "previous", "y"))
-# load the library
-library(mlbench)
-library(caret)
+set.seed(7)
+# library(mlbench)
+# library(caret)
 # prepare training scheme
-control <- trainControl(method="repeatedcv", number=10, repeats=5)
-# we also need to 'test' the dataset after....
-model <- train(y~., data=BM_mini_num, method="lvq", preProcess="scale", trControl=control)
+control <- trainControl(method="repeatedcv", number=10, repeats=10)
+model <- train(y~., data=BM_num, method="lvq", preProcess="scale", trControl=control)
 # estimate variable importance
 importance <- varImp(model, scale=FALSE)
-# summarize importance
 print(importance)
-# plot importance
 plot(importance)
 # results: duration (0.815), previous (0.6), contact (0.6), pdays (0.59), poutcome (0.59), [housing (0.58), balance (0.57)]
 # campaign (0.556), education (0.54), loan (0.54), age (0.51), day (0.51) 
 # keep above 0.5 and all else can delete
+#
 ```
 
-# Part 5 - #3 - Feature Selection - Random Forest - ALL numeric data BM_num
+# Part 4 - #3 - Feature Selection - Random Forest - ALL numeric data BM_num
 Recursive Feature Elimination or RFE
 random forest function rfFuncs
-method = cross-validation , repeat 10 times
+method = cross-validation
+number=10-fold, repeated 10 times
 # Kappa should be >0.6 "machine learning with R" pg.324
 # kappa takes imbalance into account
 
+# takes too long to do- over 15 hours and still running - use mini version
+# mini version - see below
+
 ```{r}
 set.seed(7)
-# str(BM_num)
-library(mlbench)
-library(caret)
-# seemed to require lattice and ggplot ???
-# had run through this with mini data but stopped with errors below on whole file
+# BM_num<-BM
+# simple version:
+# r_tree=randomForest(y ~.,data=BM,nodesize=25,ntree=200)
+# library(lattice)
+# library(ggplot2)
 # define the control using a random forest selection function rfFuncs
-control <- rfeControl(functions=rfFuncs, method="cv", number=10)
+control <- rfeControl(functions=rfFuncs, method="cv", number=10, repeats=10)
 # run the RFE algorithm
 results <- rfe(BM_num[,1:16], BM_num[,17], sizes=c(1:16), rfeControl=control)
 # summarize the results
@@ -765,85 +751,178 @@ print(results)
 predictors(results)
 # plot the results
 plot(results, type=c("g", "o"))
-#results show top 7: duration, [month], poutcome, pdays, contact, previous, and [day]
+#results show top 7: duration, month, poutcome, pdays, contact, previous, day
+# 2nd run top 9: duration, month, poutcome, day, pdays, contact, previous, age, housing
+# 2nd run: accuracy with duration is 0.8697 then keeps going up to 0.9038 to housing (#9)
+# 2nd run: but kappa at 0.4525 for the 9th so still not great- s/b over 0.6
 # 5 agree with above
-# accuracy is good but KAppa is bad
+
+# need to also do on test set
+
 ```
 
-# PART 6 - Preprocess - Balancing Data
-# check this section if it needs work - come back to this....
+# Part 4 - #4 - PCA
+Principal component analysis (PCA) is a technique for reducing the dimensionality of datasets, increasing interpretability but at the same time minimizing information loss. It does so by creating new uncorrelated variables that successively maximize variance.
+
+i think BM$y should not be in dataset?? just ignore it
+REQUIRES SCALED NUMERIC DATA or option in formula to do that
+
+version 1: lets try with all numeric, not scaled  -> BM_num or BM_dummy
+version 2: lets try with all numeric and numeric scaled (min-max) - BM_num or BM_dummy -> BM_num_scale
+version 3: lets try with all numeric and numeric scaled (z-scale) - BM_num or BM_dummy-> BM_num_z
+
+```{r}
+# all data should be numeric - if cor=TRUE then data is scaled and centered
+pc_BM<- princomp(BM_num_scale, cor=FALSE)
+# pc_BM$scores
+summary(pc_BM)
+# 
+```
+
+# RESULTS: keep Comp. st.dev. >= 1.0
+BM_num (cor=TRUE): keep first 6 comp.
+BM_num_scale (cor=FALSE): keep only first 2 comp.
+BM_num_scale (cor=TRUE): keep first 7 comp.
+BM_num_z: (cor=FALSE): keep first 7 comp.
+BM_num_z (cor=TRUE): keep first 7 comp.
+
+# then plot
+
+```{r}
+plot(pc_BM)
+```
+
+# scree plot
+
+```{r}
+# print(pc_BM)
+screeplot(pc_BM, type="line", main="Scree Plot")
+# again, use variance > 1.0 so keep first 7 components
+```
+
+# see actual component values
+
+```{r}
+pc_BM$loadings
+```
+
+# RESULTS:
+BM_num (cor=TRUE): keep all attributes
+BM_num_scale (cor=FALSE): keep only job, month
+BM_num_scale (cor=TRUE): keep all attributes
+BM_num_z (cor=TRUE): keep all attributes
+
+BM_num_z (cor=FALSE): keep age, campaign, job, marital, education, contact, month ONLY (happen to be 7)
+use first 7 components, but there is much less data:
+comp.1 = 0.173*job2 -0.98*job
+comp.2 = 0.99*month
+etc....
+comp.7 = 0.114*age + 0.781*campaign + 0.586*job7
+===================================================================================================
+
+# PART 5 - Preprocess - Balancing Data
+# currently we have 4 methods
+to come back to...CHECK RESEARCH AND COMPARE ...AND USE FOR MODELS As another 'test'
 
 # 4 methods all here....for solving imbalance:
 1. down sampling
 2. up sampling
 3. SMOTE
 4. ROSE
+# *** in trainControl, sampling = "none", "down", "up", "smote", or "rose". The latter two values require the DMwR and ROSE packages.
 
 ```{r}
 # 4 methods for solving imbalance
 set.seed(30)
-BM_train_sample <- sample(nrow(BM), 0.9 * nrow(BM))
-BM_imbal_train<- BM[BM_train_sample, ]
-BM_imbal_test <- BM[-BM_train_sample, ]
-# NOTE: right now the file is original with factors
+# get train and test datasets
+BM_train_index <- sample(nrow(BM), 0.7 * nrow(BM))
+BM_train<- BM[BM_train_index, ]
+BM_test <- BM[-BM_train_index, ]
+# 
 # decide on what dataset you want first i.e. all numbers
 # str(BM_imbal_train)
 # table(BM_imbal_train$y)
-# keep the test set as is, as it should be representative of the real data % of Y
-# now with the training set, we can do 4 ways of fixing imbalance
+#
+# we can do 4 ways of fixing imbalance
 # START
-# method 1 - both sample sizes are 4783
+# method 1 - under sample - both sample sizes are 465
 set.seed(30)
-down_train <- downSample(x = BM_imbal_train[, -ncol(BM_imbal_train)],
-                         y = BM_imbal_train$y)
+down_train <- downSample(x = BM_imbal_train[, -ncol(BM_imbal_train)], y = BM_imbal_train$y)
 table(down_train$Class)  
 #
-# method 2 - both sample sizes are 35906
-up_train <- upSample(x = BM_imbal_train[, -ncol(BM_imbal_train)],
-                         y = BM_imbal_train$y)
+# method 2 - over sample - both sample sizes are 3603
+up_train <- upSample(x = BM_imbal_train[, -ncol(BM_imbal_train)], y = BM_imbal_train$y)
 table(up_train$Class)
-str(up_train)
+# str(up_train)
 #
-# method 3 - no is 19132 and yes is 14349
-#install.packages("DMwR")
+# method 3 - over sample - no is 1860 and yes is 1395
+# install.packages("DMwR")
 # library(DMwR)
 # this one is slow
 set.seed(30)
 BM_smote_train <- SMOTE(y ~ ., data  = BM_imbal_train)                         
 table(BM_smote_train$y) 
 #
-# method 4 - no is 20621 and yes is 20068
+# method 4 - over sample - no is 2042 and yes is 2026
 # install.packages("ROSE")
 # library(ROSE)
 set.seed(123)
 BM_rose_train <- ROSE(y ~ ., data  = BM_imbal_train)$data                         
 table(BM_rose_train$y) 
-# use a bagged classification and estimate the area under the ROC curve using five repeats of 10-fold CV.
+#
 # try each one above with a model, then use best result going forward for the model
-# then for each model do 10x
-# use '10-fold'???
 ```
 
-# PART 7 - Cross-Validation part with Models
-1. large dataset is in 'dated' order so we need to make sure we get random data
+# PART 6 - Cross-Validation with Models
+# keep but not used 
+1. large dataset is in 'dated' order so we need to make sure we get random data OR use BM_mini
 2. we can set up training and test set (and validation set)
-3. then keep using this process for ALL models to standardize as much as possible
-
-simpler methods NOT used:
 
 ```{r}
-# method 1 not used: use random_ids to generate random sampling datasets
-#
-# method 2A: holdout method for stratified random sampling
-# partitioned data for train and test sets only 
 library(caret)
-library(lattice)
-library(ggplot2)
+# start with BM name
+# method 1: use sampling 
+BM_tr_sample <- sample(nrow(BM), floor(nrow(BM) * 0.7))
+BM_train<- BM[BM_tr_sample, ]
+BM_test <- BM[-BM_tr_sample, ]
+
+# method 2: Holdout method using random IDs - example only
+random_ids <- order(runif(1000))
+credit_train <- BM[random_ids[1:500],]
+credit_validate <- BM[random_ids[501:750], ]
+credit_test <- BM[random_ids[751:1000], ]
+
+# method 3: using caret function
+# holdout method for stratified random sampling
+# partitioned data for train and test sets only 
 in_train<- createDataPartition(BM$y, p=0.75, list=FALSE)
 BM_train<- BM[in_train,]
 BM_test<-BM[-in_train,]
-#
-# method 2B: holdout method for train, test, validation sets
+
+# method 4: 10-fold CV using caret
+folds <- createFolds(BM$y, k = 10)
+str(folds)
+BM01_test <- BM[folds$Fold01, ]
+BM01_train <- BM[-folds$Fold01, ]
+
+## method 5: Automating 10-fold CV for a C5.0 Decision Tree using lapply
+library(C50)
+library(irr)
+set.seed(123)
+folds <- createFolds(BM$y, k = 10)
+cv_results <- lapply(folds, function(x) {
+  BM_train <- BM[-x, ]
+  BM_test <- BM[x, ]
+  BM_model <- C5.0(y ~ ., data = BM_train)
+  BM_pred <- predict(BM_model, BM_test)
+  BM_actual <- BM_test$y
+  kappa <- kappa2(data.frame(BM_actual, BM_pred))$value
+  return(kappa)
+})
+str(cv_results)
+mean(unlist(cv_results))
+
+# method 6: holdout method for stratified random sampling - train, test, validation sets -one version i made up
 # partitioned data adding validation set
 in_train<- createDataPartition(BM$y, p=0.50, list=FALSE)
 BM_train<- BM[in_train,]
@@ -851,71 +930,45 @@ BM_other<- BM[-in_train,]
 other<- createDataPartition(BM_other$y, p=0.50, list=FALSE)
 BM_test<- BM_other[other,]
 BM_validate<- BM_other[-other,]
-#
-# 1. run training model with data -> results
-# 2. run test set with model results of step 1 using predict()
-# 3. run validaton set with model results of step 1
-#
-# method 3: repeated holdout or cross-validation method - 10-fold is standard 
-# Automating 10-fold CV for a C5.0 Decision Tree using lapply() ----
-# example: 
-library(caret)
-library(C50)
-library(irr)
-credit <- read.csv("credit.csv")
-set.seed(123)
-folds <- createFolds(credit$default, k = 10)
-cv_results <- lapply(folds, function(x) {
-  credit_train <- credit[-x, ]
-  credit_test <- credit[x, ]
-  credit_model <- C5.0(default ~ ., data = credit_train)
-  credit_pred <- predict(credit_model, credit_test)
-  credit_actual <- credit_test$default
-  kappa <- kappa2(data.frame(credit_actual, credit_pred))$value
-  return(kappa)
-})
-str(cv_results)
-mean(unlist(cv_results))
-#
+
+# method 7: training test set is incorporated in model sing cross-validation
+# The process of cross-validation is, by design, another way to validate the model
+# we don't need a separate test set - total N chunks, N-1 for training and nth for testing
 ```
 
-# PART 7 - Cross-Validation part with Models
-4. 10-fold Cross validation method - 'best' and the easiest, and Integrated with the Model
-- Let's use trainControl, expand.grid, and train functions
 
+# PART 6 - Cross-Validation included with Models
+trying to use method 7 - 10-fold Cross validation method for all models
+cv - 'best' and the easiest, and Integrated with the Model
+Let's use trainControl, expand.grid, and train functions
+# *** in trainControl, sampling (Part 5 Balancing) = "none", "down", "up", "smote", or "rose". The latter two values require the DMwR and ROSE packages. WEIRD but these options/values may or may not work per model.
+
+# Part 7 - Models
 # repeat for ALL  models 
-model:
-data:
-ctrl options:
-grid options:
-model options:
-keep a table of various options (or screenshots) to show which options work best
-plot R-curve with all other models
-AUC value: 
+ctrl options, grid options, model options...
+keep a table of various options to show which options work best
+Keep a table of results
+plot? R-curve with all other models, AUC value or curve
 
-
-# Part 8 - Models
-
-# Part 8 - Model 1 - C5.0 Decision Tree 
-?? pre-prune and post-prune options
+# Part 7 - Model 1 - C5.0 Decision Tree 
+other options - pre-prune and post-prune
 best model options for 'oneSE' function uses model=tree, trials=1, winnow=FALSE
 Kappa= , Accuracy=
 best model options for 'best' function uses model=tree, trials=1, winnow=FALSE
-Kappa= 0.488, Accuracy = 0.903
-Current verson below
 Kappa= 0.4816, Accuracy=0.9077, trials =25 but ~1
 
+# USE ROCR or pROC to visualize performance of scoring classifiers....
+
 ```{r}
+# *** in trainControl, sampling = "none", "down", "up", "smote", or "rose". The latter two values require the DMwR and ROSE packages.
+library(rocc)
 # other options: center=TRUE, scale=TRUE
-# lots of options
-# train and test sets combined
+# cross-validated 10-fold
 ctrl<- trainControl(method="cv", number = 10, selectionFunction = "best")
-# finally -  use repeatedcv = 10 to do 10x10 
-# c(1,5,10,15,20,25)
-# may or may not use tuning grid - if we leave out, then model will decide the best fit
-grid<- expand.grid(model="tree", trials = c(1,5), winnow=FALSE)
+# may or may not use 'tuning' grid - if we leave out, then model will decide the best fit
+grid<- expand.grid(model="tree", trials = c(1,5,10,15,25), winnow=FALSE)
 set.seed(300)
-# m<- train(y ~., data = BM, method = "C5.0", rocc, metric = "Kappa", trControl = ctrl, tuneGrid = grid)
+# m<- train(y ~., data = BM, method = "C5.0", rocc, metric = "Kappa")
 # metric:"RMSE" and "Rsquared" for regression
 # metric: "Accuracy" and "Kappa" for classification
 m<- train(y ~., 
@@ -923,39 +976,37 @@ m<- train(y ~.,
           method = "C5.0", 
           weights=NULL, 
           metric = "Accuracy", 
-          rocc,
           trControl = ctrl, 
           tuneGrid = grid, 
           tuneLength = 3)
 m
-# m$finalModel
+m$finalModel
 ```
 
-# Part 8 - Model 2 - lazy learning or K-Nearest Neighbours (k-NN)
+# Part 7 - Model 2 - lazy learning or K-Nearest Neighbours (k-NN)
 # 1a - MODEL 1 KNN chapter 3
 # training and test set
 want to normalize numeric data and center it
 
 ```{r}
-# randomize first - to do - since data is in order
 # BM$y is a number
-# look up how to randomly take data from dataset 
-# below is just a way to get it started so i can see results
-BM_norm_train <- BM_norm[1:36168,]
-BM_norm_test <- BM_norm[36169:45211,]
-BM_norm_train_labels <- BM[1:36168, 17]
-BM_norm_test_labels <- BM[36169:45211, 17]
-#data is in order so redo this
+# below is just one way so i can see results
+BM_norm_train <- BM_norm[1:3617,]
+BM_norm_test <- BM_norm[3617:4521,]
+BM_norm_train_labels <- BM[1:3617, 17]
+BM_norm_test_labels <- BM[3617:4521, 17]
+#data for BM_mini is random so this can work
 ```
 
-# NOTE: need to review all models with sampling techniques....
+# NOTE: need to review models with proper sampling techniques or 10-fold CV....
 
-# Part 8 - Model 2
+# Part 7 - Model 2
 
 ```{r}
 # install.packages("class")
 # library(class)
-ctrl<- trainControl(method="cv", number = 10, selectionFunction = "oneSE")
+# added "repeated"-cv, and repeats=10
+ctrl<- trainControl(method="repeatedcv", number = 10, repeats=10, selectionFunction = "oneSE")
 # grid<- expand.grid(model="tree", trials = c(1,5,10,15,20,25,30,35), winnow=FALSE)
 RNGversion("3.5.2")
 set.seed(300)
@@ -969,7 +1020,7 @@ m
 ```
 
 get ROC curves and AUC ...tbd
-# Part 8 - model 2
+# Part 7 - model 2
 
 ```{r}
 
@@ -982,7 +1033,7 @@ auc(bank_roc)
 auc(bank_roc_knn)
 ```
 
-# Part 8 - model 2c - evaluate model performance
+# Part 7 - model 2c - evaluate model performance
 
 ```{r}
 CrossTable(x = BM_norm_test_labels, y = BM_norm_predict)
@@ -993,7 +1044,7 @@ true positive  6151/9043
 false negative = 36/9043 OR is (9043 - 36)/9043 = 99.6% accuracy
 false positve = 2779/9043
 
-# Part 8 - model 2d - try to improve model performance
+# Part 7 - model 2d - try to improve model performance
 let's try z-score standardization instead of the normalization used above
 all else is the same
 
@@ -1001,10 +1052,10 @@ all else is the same
 # automatic z-standardization using scale function
 BM_z<- as.data.frame(scale(BM_numeric))
 
-BM_z_train <- BM_z[1:36168,]
-BM_z_test <- BM_z[36169:45211,]
-BM_z_train_labels <- BM[1:36168, 17]
-BM_z_test_labels <- BM[36169:45211, 17]
+BM_z_train <- BM_z[1:3617,]
+BM_z_test <- BM_z[3617:4521,]
+BM_z_train_labels <- BM[1:3617, 17]
+BM_z_test_labels <- BM[3617:4521, 17]
 BM_z_predict<- knn(train = BM_z_train, test = BM_z_test, cl = BM_z_train_labels , k=21) 
 CrossTable(x = BM_z_test_labels, y = BM_z_predict)
 ```
@@ -1012,7 +1063,7 @@ CrossTable(x = BM_z_test_labels, y = BM_z_predict)
 Unfortunately, the results are worse
 now we have 352/9043 incorrectly classified as FN
 
-# Part 8 - model 2e - so lets go back to normalized dataset and retry with different k-values
+# Part 7 - model 2e - so lets go back to normalized dataset and retry with different k-values
 
 ```{r}
 BM_norm_predict<- knn(train = BM_norm_train, test = BM_norm_test, cl = BM_norm_train_labels, k=27)
@@ -1034,14 +1085,14 @@ it looks like regular normalization and k=5 is the best...
 # we will keep this model for later comparison of all models
 
 
-# Part 8 - MODEL 3 Naive Bayes chapter 4
+# Part 7 - MODEL 3 Naive Bayes chapter 4
 # Uses factor data
 -Add Laplace estimator of 1
 
 ```{r}
 # Create training and test set
 set.seed(123)
-BM_train_sample <- sample(45211, 36168)
+BM_train_sample <- sample(4521, 3617)
 # 
 BM_cat_train<- BM_cat[BM_train_sample, ]
 BM_cat_test <- BM_cat[-BM_train_sample, ]
@@ -1056,7 +1107,7 @@ prop.table(table(BM_cat_test_labels))
 
 # *** ABOVE IS SAMPLING - TRY TO USE 10 Fold CV in all models
 
-# Part 8 - model 3 - run the naive bayes model
+# Part 7 - model 3 - run the naive bayes model
 
 ```{r}
 # install.packages(e1071)
@@ -1089,7 +1140,7 @@ sms_results <- data.frame(actual_type = sms_test_labels,
                           prob_ham = round(sms_test_prob[ , 1], 5))
 ```
 
-# Part 8 - model 3
+# Part 7 - model 3
 
 ```{r}
 library(pROC)
@@ -1117,7 +1168,7 @@ auc(bank_roc_knn)
 ```
 
 
-# Part 8 - model 3
+# Part 7 - model 3
 # PART X:
 lets' just try with laplace =1 (pg122) 
 
@@ -1128,19 +1179,19 @@ BM_test_pred2<- predict(BM_classifier2, BM_cat_test)
 CrossTable(BM_cat_test_labels, BM_test_pred2, prop.chisq = FALSE, prop.c = FALSE, prop.r = FALSE, dnn = c('actual',  'predicted'))
 ```
 
-# Part 8 - model 3
+# Part 7 - model 3
 get same result as one above is already 100%
 # BUT WHAT CLASSIFICATION RESULTS DO WE HAVE ???
 model may be good but we can't SHOW how....
 
 
 # ch 5 C5.0 decision trees
-# see also lines 768-800 where i used model=tree
+# see also lines 768-800 where i used model=tree plus C5.0
 # train and test and labels
 # used random sampling because the larger dataset is ordered
 
 ```{r}
-RNGversion("3.5.2"); set.seed(123)
+set.seed(123)
 BM_train_sample <- sample(45211, 36168)
 #
 BM_train<- BM[BM_train_sample, ]
@@ -1154,7 +1205,7 @@ prop.table(table(BM_train_labels))
 prop.table(table(BM_test_labels))
 ```
 
-# Part 8 - model 3- now to create the model
+# Part 7 - model 4- now to create the model
 
 ```{r}
 # install.packages("C50")
@@ -1164,7 +1215,7 @@ tree_model
 ```
 
 
-# Part 8 - model 3 - check the model
+# Part 7 - model 4 - check the model
 
 ```{r}
 summary(tree_model)
@@ -1177,7 +1228,7 @@ No      Yes
 2749   1494
 which means a total of (2749+601)/36168 =  9.3% error rate
 
-# Part 8 - model 3 - now lets look at the test dataset
+# Part 7 - model 4 - now lets look at the test dataset
 
 ```{r}
 # see predictons
@@ -1186,7 +1237,7 @@ tree_predict<- predict(tree_model, BM_test)
 CrossTable(x = BM_test_labels, y = tree_predict, prop.chisq = FALSE, prop.c = FALSE, prop.r = FALSE, dnn = c('actual default',  'predicted default'))
 ```
 
-# Part 8 - model 3 
+# Part 7 - model 4 
 test dataset:
 Results are:
            predicted 
@@ -1204,7 +1255,7 @@ so the error rate is 1% worse than the training dataset
 1. increase # trials from 1 to say 10
 2. assigning a cost matrix
 
-#  Part 8 - model 3 - improvemnt #1
+#  Part 7 - model 4 - improvement #1
 
 ```{r}
 tree_model<- C5.0(BM_train[-17], BM_train_labels, trials=10)
@@ -1219,7 +1270,7 @@ the error rate dropped from 9.3% to 8.7%
 
 Now let's review the test data:
 
-#  Part 8 - model 3 - see predictions
+#  Part 7 - model 4 - see predictions
 
 ```{r}
 tree_predict_10<- predict(tree_model, BM_test)
@@ -1227,11 +1278,11 @@ tree_predict_10<- predict(tree_model, BM_test)
 CrossTable(x = BM_test_labels, y = tree_predict_10, prop.chisq = FALSE, prop.c = FALSE, prop.r = FALSE, dnn = c('actual default',  'predicted default'))
 ```
 
-# Part 8 - model 3 
+# Part 7 - model 4 
 boosted model - test dataset Results are:
            predicted 
 actual       no      yes     total
-no         7776      221(FP)7997
+no         7776      221(FP) 7997
 yes         751      295     1046
 total      8527      516     9043
 
@@ -1243,7 +1294,7 @@ so the overall error rate is the same as the original test dataset
 but compared to the training set:
 error rate is 10.7% vs 8.7% training
 
-#  Part 8 - model3 - improvement #2
+#  Part 7 - model4 - improvement #2
 2. assigning a 2x2 cost matrix
 
 ```{r}
@@ -1257,7 +1308,7 @@ tree_predict_cost<- predict(tree_model_cost, BM_test)
 CrossTable(x = BM_test_labels, y = tree_predict_cost, prop.chisq = FALSE, prop.c = FALSE, prop.r = FALSE, dnn = c('actual default',  'predicted default'))
 ```
 
-# Part 8 - model 3 
+# Part 7 - model 4 
 Results are:
            predicted 
 actual       no      yes     total
@@ -1271,7 +1322,7 @@ this error rate increased from 10.7%
 but the FN dropped by half while the FP went up over 4x
 And Accuracy dropped, so this model not so good
 
-# Part 8 -
+# Part 7 -
 # Other classification models
 1. 1R or OneR
 2. RIPPER or JRip - good for categorical data
@@ -1281,7 +1332,7 @@ leave code below for now but copy in the datafile for 10-fold validation to do t
 USE dataset that is all categorical
 from row 375 - PART 3 - CONVERSIONS - use BM_fact dataset
 
-#  Part 8 - model 4 - OneR - poutcome is best result
+#  Part 7 - model 5 - OneR - poutcome is best result
 
 ```{r}
 #install.packages("OneR")
@@ -1298,13 +1349,13 @@ so poutcome is the only and greatest factor used, and
 if poutcome = success then y = 'yes', otherwise y = 'no'
 accuracy is 89.29%
 
-#  Part 8 - model 4 - let's see confusion matrix
+#  Part 7 - model 5 - let's see confusion matrix
 ```{r}
 BM_1R_predict<- predict(BM_1R_model, BM)
 table(actual = BM$y, predicted = BM_1R_predict)
 ```
 
-#  Part 8 - model 4 - The 4311 as FN is not good
+#  Part 7 - model 5 - The 4311 as FN is not good
 
          predicted
 actual    no    yes
@@ -1313,7 +1364,7 @@ actual    no    yes
 
 # REBALANCE FIRST?? 
 
-#  Part 8 - model 5 - Other classification models: RIPPER or JRip 
+#  Part 7 - model 6 - Other classification models: RIPPER or JRip 
 
 ```{r}
 # JRip is in RWeka package
@@ -1377,7 +1428,7 @@ BM_JRip_predict<- predict(BM_JRip_model, BM)
 table(actual = BM$y, predicted = BM_JRip_predict)
 ```
 
-#  Part 8 - model 5 - The 3114 as FN is not good
+#  Part 7 - model 6 - The 3114 as FN is not good
 
          predicted
 actual    no    yes
@@ -1388,12 +1439,11 @@ actual    no    yes
 
 # come back to this later as ch.11 will show how to make better decision trees with a random forest model
 
-#  Part 8 - model x - REGRESSION MODELS BELOW
+#  Part 7 - model 7 - REGRESSION MODELS BELOW
 Regression assumes normality and no skewing, multicollinearity
 also have
 -linear model DONE
 -logistic regression for a binary outcome (which we have)
--poisson regression - for integer count data
 -multinomial logistic regression - models categorical outcome
 
 we need ALL numeric data
@@ -1403,7 +1453,7 @@ we need ALL numeric data
 if p<0.05 then the independent variables are significant and should be included
 this is with the full dataset so the answer is for y=yes outcome
 
-# Part 8 - model x
+# Part 7 - model 7
 ```{r}
 # library(faraway)
 # use BM_num done above
@@ -1416,7 +1466,7 @@ g1 <- lm(BM_num2$y ~ ., data=BM_num2)
 summary(g1)
 ```
 
-# Part 8 - model x
+# Part 7 - model 7
 build a better model
 # 1. delete day [10] and default [5]
 # 2. take out job [2]
@@ -1437,7 +1487,7 @@ g2 <- lm(BM_num2$y ~ ., data=BM_num2)
 summary(g2)
 ```
 
-# Part 8 - model x
+# Part 7 - model 7
 
 Note that the model fitness overall is low with R-sq = 25% only
 # so the model is NOT very good
@@ -1464,77 +1514,193 @@ summary(g3)
 # not going further wih this model because we still get R-sq = 30%
 ```
 
-# Part 8 - model x
+# Part 7 - model 8
 
-MAYBE ONLY DO REGRESSION WITH ORIGINAL NUMERIC ATTRiBUTES?
 # REGRESSION MODELS BELOW
-NORMALIZE THE DATASET THEN TRY HERE **********
+
 # use numeric data set but normalize the previous 'numeric' data first
-# forward, backward in week 11 but getting error message
-# those above are for numeric data
 Regression assumes normality and no skewing, multicollinearity
 # - see class notes
 -logistic regression for a binary outcome (which we have)
--poisson regression - for integer count data
 -multinomial logistic regression - models categorical outcome
 
 NEW
 Regression trees and model trees ch6 in textbook
-copy to code from chapter 6
 
-# Part 8 - model x
+# Part 7 - model 8a -lm forward
 
 # Forward selection algorithm
+# getting negative AIC for every choice of data - 
+should get lowest AIC for best answer
+# doesn't make much sense
+
+version 1: lets try with numeric scaled and keep nominal (min-max) - BM-> BM_scale
+version 2: lets try with numeric scaled and keep nominal (z-scale) - BM-> BM_z
+version 3: lets try with all numeric and numeric scaled (min-max) - BM_num or BM_dummy -> BM_num_scale
+version 4: lets try with all numeric and numeric scaled (z-scale) - BM_num or BM_dummy-> BM_num_z
 
 ```{r}
 # factors?
-install.packages("RCurl")
-install.packages("FNN")
-install.packages("MASS")
-install.packages("Leaps")
+# install.packages("RCurl")
+# install.packages("FNN")
+# install.packages("MASS")
+# install.packages("leaps")
 library(RCurl)
 library(FNN)
 # MASS needs pred ?
-# library(MASS)
-library(Leaps)
+library(MASS) # for stepAIC
+library(leaps) 
 # y must be a number
-BM_mini_num_01<- BM_mini_num
-BM_mini_num_01$y<- ifelse(BM_mini_num_01$y==c("yes"), 1, 0)
-full<- lm(y~., data = BM_mini_num)
-null<- lm(y~1, data = BM_mini_num)
-stepF<- stepAIC(null, scope=list(lower=null, upper=full), direction="forward", trace=TRUE)
+# copy over whatever dataset is to BM_01
+#
+BM_01<- BM_num_z
+# BM_01$y<- ifelse(BM_01$y==c("yes"), 1, 0)
+full<- lm(y~., data = BM_01)
+null<- lm(y~1, data = BM_01)
+# trace=TRUE to follow steps
+stepF<- stepAIC(null, scope=list(lower=null, upper=full), direction="forward")
+# stepF to show chosen model
 summary(stepF)
 ```
 
-# Part 8 - model x
+# Part 7 - model 8b -lm backward
 
 # backward elimination
+# duration only, adding other variables increases AIC
 
 ```{r}
-full<- lm(y~., data = BM_mini_num)
-stepB<- stepAIC(full, direction="backward", trace=TRUE)
+full<- lm(y~., data = BM_01)
+stepB<- stepAIC(full, direction="backward")
 summary(stepB)
 ```
 
-# Part 8 - model x
+# Part 7 - model 8c -lm both directions
 
-# both
+# results not good - seems to be only going up - best with NO attributes?
+
 ```{r}
-full<- lm(y~., data = BM_mini_num)
-null<- lm(y~1, data = BM_mini_num)
-stepF<- stepAIC(null, scope=list(lower=null, upper=full), direction="both", trace=TRUE)
+full<- lm(y~., data = BM_01)
+null<- lm(y~1, data = BM_01)
+stepF<- stepAIC(null, scope=list(lower=null, upper=full), direction=c("both"), steps=1000)
+stepF$anova
 summary(stepF)
 ```
 
-# Part 8 - model x
+# Part 7 - model 8d
 
-# best subsets
+# best subsets up to 8 are poutcome, housing, contact, loan, campaign, job6, marital, education
+
 ```{r}
-subsets<- regsubsets(y~., data=BM_mini_num, nbest=1)
+subsets<- regsubsets(y~., data=BM_01, nbest=1)
 sub.sum<- summary(subsets)
 as.data.frame(sub.sum$outmat)
 ```
 
+# NEXT model
+# Logistic regression model
+data can be also factors
+BM$y must be numeric
 
+# part 1
+
+```{r}
+# BM_01<- BM_num_z
+# get train and test set to get confusion matrix
+BM_train_index <- sample(nrow(BM_01), 0.7 * nrow(BM_01))
+BM_train<- BM_01[BM_train_index, ]
+BM_test <- BM_01[-BM_train_index, ]
+model<- glm(formula=BM_train$y~., data=BM_train, family="binomial")
+# summary gives AIC value and we want lowest AIC value when comparing these models
+summary(model)
+```
+
+# results
+1. BM_01:    pdays, previous, age do NOT matter
+2. BM_num_z: day, job, default do NOT matter
+3. BM_dummy to BM_num_z: age, job5, job7, job, education, default, month do NOT matter
+
+# part 2 - confusion matrix with test dataset
+
+```{r}
+pred<- predict(model, BM_test, type="response")
+# success is probability >= 0.50
+# we can change probabilty to see how that affects results
+# even with p=0.8 we get good results 
+pred_V1<- ifelse(pred>=0.5, 1, 0)
+conf_Matrix<- table(actual=BM_test$y , predicted=pred_V1)
+conf_Matrix
+```
+
+# part 3 - Accuracy
+Accuracy = (TP + TN)/total
+TP is top LH corner and TN is bottom RH corner, OR:
+
+```{r}
+# Accuracy with BM_01 - we get 0.904
+# Accuracy with BM_num_z - we get 0.8995, and ROC curves are bad
+# Accuracy with BM_dummy then BM_num_z - we get 0.8953, and ROC curves are bad
+sum(diag(conf_Matrix))/nrow(BM_test)
+```
+
+# plot ROC curve version #1
+
+# AUC over 0.70 is acceptable, the higher the better
+# AUC of 0.50 is baseline
+
+```{r}
+library(ROCR)
+# plot a ROC curve for a single prediction run and color the curve according to cutoff
+# pred <- prediction(df$predictions, df$labels)
+pred <- prediction(pred_V1, BM_test$y)
+perf <- performance(pred,"tpr","fpr")
+plot(perf,colorize=TRUE)
+```
+
+# plot ROC version #2
+
+```{r}
+library(pROC)
+pROC_obj <- roc(BM_test$y,pred_V1,
+            smoothed = TRUE,
+            # arguments for ci
+            ci=TRUE, ci.alpha=0.9, stratified=FALSE,
+            # arguments for plot
+            plot=TRUE, auc.polygon=TRUE, max.auc.polygon=TRUE, grid=TRUE,
+            print.auc=TRUE, show.thres=TRUE)
+sens.ci <- ci.se(pROC_obj)
+plot(sens.ci, type="shape", col="lightblue")
+plot(sens.ci, type="bars")
+```
+
+# plot ROC version #3
+# AUC shows 0.662
+
+```{r}
+library(PRROC)
+PRROC_obj <- roc.curve(scores.class0 = pred_V1, weights.class0 = BM_test$y, curve=TRUE)
+plot(PRROC_obj)
+# PRROC_obj gives AUC number only
+```
+
+# plot ROC version #4
+I like that the baseline shows
+
+```{r}
+library(precrec)
+# calculates ROC and precison-recall curves
+precrec_obj <- evalmod(scores = pred_V1, labels = BM_test$y)
+plot(precrec_obj, "ROC")
+# autoplot(precrec_obj)
+```
+
+
+# part 4 - test each variable by using drop1
+and we get similar results in that pdays, previous, age are still NOT useful
+
+```{r}
+drop1(model, test="Chisq")
+```
+
+Using version 3 - BM_dummy-> BM_num_z, these attributes are not required: age, job5, job7, job, education, default, month
 
 
