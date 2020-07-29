@@ -1,0 +1,537 @@
+---
+title: "All 7 models - nb, C5.0, JRip, glm, kknn, nnet, svmlinear"
+author: "jean wills"
+date: "13/07/2020"
+output: word_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message=FALSE, warning=FALSE)
+```
+
+
+# step 1a - need to get to "BM_mini_sc" (added 95% CI + numeric scaled) 
+
+```{r}
+library(plyr)
+library(dplyr)
+BM_mini <- read.csv("/Users/jeanwills/Desktop/CKME136/1_data/bank.csv", header=T, sep = ";", stringsAsFactors = T, na.strings = "NA")
+# Step 1 - NUMERIC DATA Cleaning - change numeric data outside the 2.5% and the 97.5% percentiles to this maximum/minimum value
+BM<-BM_mini
+
+Lq_bal<- quantile(BM$balance, probs=c(0.025))
+Hq_bal<- quantile(BM$balance, probs=c(0.975))
+#Lq_bal  #  -393
+#Hq_bal   # 8969
+Lq_dur<- quantile(BM$duration, probs=c(0.025))
+Hq_dur<- quantile(BM$duration, probs=c(0.975))
+#Lq_dur  #  19
+#Hq_dur   # 986
+Lq_cam<- quantile(BM$campaign, probs=c(0.025))
+Hq_cam<- quantile(BM$campaign, probs=c(0.975))
+#Lq_cam  #  1
+#Hq_cam   # 11
+Lq_days<- quantile(BM$pdays, probs=c(0.025))
+Hq_days<- quantile(BM$pdays, probs=c(0.975))
+#Lq_days  #  -1
+#Hq_days   # 356
+Lq_prv<- quantile(BM$previous, probs=c(0.025))
+Hq_prv<- quantile(BM$previous, probs=c(0.975))
+#Lq_prv  #  0
+#Hq_prv   #  5
+
+BM$balance[BM$balance < Lq_bal] <- Lq_bal
+BM$balance[BM$balance > Hq_bal] <- Hq_bal
+
+BM$duration[BM$duration < Lq_dur] <- Lq_dur
+BM$duration[BM$duration > Hq_dur] <- Hq_dur
+
+BM$campaign[BM$campaign < Lq_cam] <- Lq_cam
+BM$campaign[BM$campaign > Hq_cam] <- Hq_cam
+
+BM$pdays[BM$pdays < Lq_days] <- Lq_days
+BM$pdays[BM$pdays > Hq_days] <- Hq_days
+
+BM$previous[BM$previous < Lq_prv] <- Lq_prv
+BM$previous[BM$previous > Hq_prv] <- Hq_prv
+
+# now make minor adjsutments
+# switch -1 -> 0 in 'pdays'
+BM$pdays<- ifelse(BM$pdays == -1, 0, BM$pdays)
+# switch duration in seconds to minutes for easier use
+BM$duration<- BM$duration/60
+
+# now have file BM ..
+```
+
+## step 1b - BM -> BM_scale or BM_mini_sc"
+
+```{r}
+# KEEP: age-1, balance-6, day-10, duration-12, campaign-13, pdays-14, previous-15
+BMS<- BM
+# BMS<-BM_mini
+normalize<- function(x) {
+  return ((x - min(x)) / (max(x) - min(x)))
+}
+BM_s<- as.data.frame(lapply(BMS[,c(1,6,10,12:15)], normalize))
+# now recombine dataframes with the nominal components
+BM_s$job<-BMS$job
+BM_s$marital<-BMS$marital
+BM_s$education<-BMS$education
+BM_s$default<-BMS$default
+BM_s$housing<-BMS$housing
+BM_s$loan<-BMS$loan
+BM_s$contact<-BMS$contact
+BM_s$month<-BMS$month
+BM_s$poutcome<-BMS$poutcome
+BM_s$y<-BMS$y
+# convert
+BM_mini_sc<-BM_s
+# result used BM_num file but now BM_num_scale with normalized numeric data
+# and y is factor
+# to convert y to numeric use next line
+# BM_scale$y<- ifelse(BM_scale$y==c("yes"), 1, 0)
+rm(BMS)
+rm(BM_s)
+rm(BM)
+```
+
+# step 2 - run training and test datasets FOR ALL CONFIGURATIONS
+
+```{r}
+# str(BM_mini_sc)
+# rename dataset here:
+BM<- BM_mini_sc
+set.seed(30)
+# get train and test datasets
+# note that if we use cross validation, we can use the complete dataset for training or keep a portion for validation after
+#
+BM_train_index <- sample(nrow(BM), 0.7 * nrow(BM))
+BM_train<- BM[BM_train_index, ]
+BM_test <- BM[-BM_train_index, ]
+BM_train_labels <- BM[BM_train_index, 17]
+BM_test_labels <- BM[-BM_train_index, 17]
+# note that we only balance the training sets
+# and leave test set as is.
+```
+
+# step 3a - run SPECIFIC Balancing step to get balanced data version:
+
+## UNDERSAMPLE MAJOR/MINOR - 360 each for training
+
+```{r}
+set.seed(30)
+down_train <- downSample(x = BM_train[, -ncol(BM_train)], y = BM_train$y)
+table(down_train$Class)  
+
+#use these now in each model if needed:
+x=down_train[,-17]
+trainsv=down_train
+y=down_train$Class
+test_noy=BM_test[,-17]
+test_labels=BM_test$y
+```
+
+# step 4 - now run models
+
+## MODEL 1 NAIVE BAYES - uses caret
+
+```{r}
+# FINAL PARAMETER VALUES USED WERE fL = 0, usekernel = TRUE and adjust = 1.
+library(klaR)
+library(caret)
+library(e1071)
+library(MASS)
+set.seed(520)
+nb_grid <- expand.grid(fL= 0, usekernel= c("TRUE"), adjust=1)
+# nb_grid <- expand.grid(fL= c(0,1), usekernel= c("TRUE", "FALSE"), adjust=c(0,1,2,3))
+nab_mod<- train(x=x, y=y, method="nb", metric="ROC", tuneGrid=nb_grid, trControl = trainControl(method="repeatedcv", number=10, repeats=10, classProbs=TRUE, summaryFunction = twoClassSummary, verboseIter=FALSE))
+# to see model results:
+# nab_mod
+# predict output using test set - even though we did 10x10 cv above, we are also using 'validation' set of 30% of the data:
+nab_pred<- predict(nab_mod, test_noy)
+s<-table(nab_pred, test_labels)
+# Confusion matrix
+print(confusionMatrix(s))
+```
+
+### we can now run 10-fold on test dataset:
+
+```{r}
+# copy in files you need and use test dataset only 
+banking<-BM_test
+
+# the other way is to run 10-fold on the test dataset and take the average of the (10 times) F1 measure 
+folds<- createFolds(banking$y, k=10)
+    # create a function to do 10 folds of the data and run the statistics...
+    results <- lapply(folds, function(x) {
+              test<- banking[x,]
+              pred<- predict(nab_mod, test[-17])
+              actual<- test$y
+              # PPV = TP/(TP+FP)
+              # pos<-posPredValue(table(pred, actual))
+              # I actually want: NPV= TN/(TN+FN) for precision of minority class
+              pr<-negPredValue(table(pred, actual))
+              # pr<-precision(table(pred, actual ))
+              # rec<- recall(table(pred, actual))
+              # i actually want specificity for recall of minority class
+              rec<- specificity(table(pred, actual))
+              F1<- 2 * pr * rec /(pr + rec)
+              return(F1)
+              })
+   #
+    # print(results)
+    value<-mean(unlist(results))
+    print(value)
+    # print the average of the 10 F1 results for test set
+```
+
+## model 2 - C5.0 Decision Tree algorithm 
+
+strengths: numeric/nominal, easy interpretation
+weaknesses: biased splits, overfitting
+
+```{r}
+# The final tuning parameters used for the original model were trials = 1, model = tree and winnow = FALSE.
+# Trials = an integer specifying the number of boosting iterations. A value of one indicates that a single model is used.
+# winnow: A logical: should predictor winnowing (i.e feature selection) be used.
+library(caret)
+set.seed(40)
+# c5_grid <- expand.grid(trials=c(1,3,5), model = c("tree", "rules"), winnow = c(TRUE, FALSE))
+c5_grid <- expand.grid(trials = 1, model = "tree", winnow = FALSE)
+c5_ctrl<- trainControl(method="repeatedcv", number = 10, repeats=10, classProbs=TRUE, summaryFunction = twoClassSummary)
+c5_mod<- train(x,y, method="C5.0", metric="ROC", tuneGrid=c5_grid, trControl = c5_ctrl, verbose=FALSE)
+c_pred<- predict(c5_mod, test_noy)
+# Testing the result output
+s<-table(c_pred, test_labels)
+# Confusion matrix
+print(confusionMatrix(s))
+```
+
+### we can now run 10-fold on test dataset:
+
+```{r}
+# copy in files you need and use test dataset only 
+banking<-BM_test
+
+# the other way is to run 10-fold on the test dataset and take the average of the (10 times) F1 measure 
+folds<- createFolds(banking$y, k=10)
+    # create a function to do 10 folds of the data and run the statistics...
+    results <- lapply(folds, function(x) {
+              test<- banking[x,]
+              pred<- predict(c5_mod, test[-17])
+              actual<- test$y
+              # PPV = TP/(TP+FP)
+              # pos<-posPredValue(table(pred, actual))
+              # I actually want: NPV= TN/(TN+FN) for precision of minority class
+              pr<-negPredValue(table(pred, actual))
+              # pr<-precision(table(pred, actual ))
+              # rec<- recall(table(pred, actual))
+              # i actually want specificity for recall of minority class
+              rec<- specificity(table(pred, actual))
+              F1<- 2 * pr * rec /(pr + rec)
+              return(F1)
+              })
+   #
+    # print(results)
+    value<-mean(unlist(results))
+    print(value)
+    # print the average of the 10 F1 results for test set
+```
+
+### to see model results:
+
+```{r}
+#c5_mod
+#c5_mod$finalModel
+# another way to see the tree's decisions and best attributes:
+summary(c5_mod)
+# we see the decision trees and....
+# ... and best attributes: see below at bottom....
+```
+
+##  model 3 - JRip (rule learner)
+
+```{r}
+# The final values used for the model were NumOpt = 10, NumFolds = 10 and MinWeights = 10.
+library(caret)
+library(RWeka)
+set.seed(50)
+# JR_grid <- expand.grid(NumOpt=c(1,3,5,10), NumFolds=c(1,3,5,10),MinWeights=c(1,3,5,10))
+JR_grid <- expand.grid(NumOpt=10, NumFolds=10, MinWeights=10)
+JR_ctrl<- trainControl(method="repeatedcv", number = 10, repeats = 10, classProbs=TRUE, summaryFunction = twoClassSummary)
+JR_mod<- train(x, y, method="JRip", metric="ROC", tuneGrid=JR_grid, trControl = JR_ctrl)
+JR_pred<- predict(JR_mod, test_noy)
+s<-table(JR_pred, test_labels)
+# Confusion matrix
+print(confusionMatrix(s))
+```
+
+### we can now run 10-fold on test dataset:
+
+```{r}
+# copy in files you need and use test dataset only 
+banking<-BM_test
+
+# the other way is to run 10-fold on the test dataset and take the average of the (10 times) F1 measure 
+folds<- createFolds(banking$y, k=10)
+    # create a function to do 10 folds of the data and run the statistics...
+    results <- lapply(folds, function(x) {
+              test<- banking[x,]
+              pred<- predict(JR_mod, test[-17])
+              actual<- test$y
+              # PPV = TP/(TP+FP)
+              # pos<-posPredValue(table(pred, actual))
+              # I actually want: NPV= TN/(TN+FN) for precision of minority class
+              pr<-negPredValue(table(pred, actual))
+              # pr<-precision(table(pred, actual ))
+              # rec<- recall(table(pred, actual))
+              # i actually want specificity for recall of minority class
+              rec<- specificity(table(pred, actual))
+              F1<- 2 * pr * rec /(pr + rec)
+              return(F1)
+              })
+   #
+    # print(results)
+    value<-mean(unlist(results))
+    print(value)
+    # print the average of the 10 F1 results for test set
+```
+
+### JRip rules compiled...
+
+```{r}
+JR_mod$finalModel
+# all for outcome yes
+```
+
+## model 4 - Logistic Regression 
+
+```{r}
+# no parameters
+library(caret)
+set.seed(520)
+log_mod<- train(x, y, method="glm", metric="ROC", family=binomial(link="logit"), trControl = trainControl(method="repeatedcv", number=10, repeats=10, verboseIter=FALSE, classProbs = TRUE, summaryFunction = twoClassSummary))
+log_pred<- predict(log_mod, test_noy)
+s<-table(log_pred, test_labels)
+# Confusion matrix
+print(confusionMatrix(s))
+```
+
+### we can now run 10-fold on test dataset:
+
+```{r}
+# copy in files you need and use test dataset only 
+banking<-BM_test
+
+# the other way is to run 10-fold on the test dataset and take the average of the (10 times) F1 measure 
+folds<- createFolds(banking$y, k=10)
+    # create a function to do 10 folds of the data and run the statistics...
+    results <- lapply(folds, function(x) {
+              test<- banking[x,]
+              pred<- predict(log_mod, test[-17])
+              actual<- test$y
+              # PPV = TP/(TP+FP)
+              # pos<-posPredValue(table(pred, actual))
+              # I actually want: NPV= TN/(TN+FN) for precision of minority class
+              pr<-negPredValue(table(pred, actual))
+              # pr<-precision(table(pred, actual ))
+              # rec<- recall(table(pred, actual))
+              # i actually want specificity for recall of minority class
+              rec<- specificity(table(pred, actual))
+              F1<- 2 * pr * rec /(pr + rec)
+              return(F1)
+              })
+   #
+    # print(results)
+    value<-mean(unlist(results))
+    print(value)
+    # print the average of the 10 F1 results for test set
+```
+
+### model results
+
+```{r}
+# to see model results:
+summary(log_mod)
+```
+
+### plot to see the most important attributes (those that "stand out" at far left or right)
+
+```{r}
+require(coefplot)
+coefplot(log_mod)
+# to reinterpret data properly
+# invlogit<- function (x) {1/(1+exp(-x))}
+# invlogit(log_mod$coefficients)
+# results of plot: duration, campaign, balance, poutcomesuccess, some months, , some jobs
+```
+
+## Model #5 - K-Nearest Neighbours
+
+```{r}
+# The final values used for the model were kmax = 9, distance = 2 and kernel = optimal
+library(caret)
+library(lattice)
+library(ggplot2)
+knn_ctrl<- trainControl(method="repeatedcv", number = 10, repeats = 10, classProbs=TRUE, summaryFunction = twoClassSummary)
+# knn_grid<-expand.grid(kmax=c(5,7,9,13), distance=c(1,2,4,6), kernel=c("rectangular","rank","optimal"))
+knn_grid<-expand.grid(kmax=9, distance=2, kernel="optimal")
+knn_mod<- train(x=x,y=y, method="kknn", metric="ROC", tuneGrid=knn_grid, trControl=knn_ctrl, verbose=FALSE)
+knn_pred<- predict(knn_mod, test_noy)
+# Testing the result output
+s<-table( knn_pred, test_labels)
+# Confusion matrix
+print(confusionMatrix(s))
+```
+
+### we can now run 10-fold on test dataset:
+
+```{r}
+# copy in files you need and use test dataset only 
+banking<-BM_test
+
+# the other way is to run 10-fold on the test dataset and take the average of the (10 times) F1 measure 
+folds<- createFolds(banking$y, k=10)
+    # create a function to do 10 folds of the data and run the statistics...
+    results <- lapply(folds, function(x) {
+              test<- banking[x,]
+              pred<- predict(knn_mod, test[-17])
+              actual<- test$y
+              # PPV = TP/(TP+FP)
+              # pos<-posPredValue(table(pred, actual))
+              # I actually want: NPV= TN/(TN+FN) for precision of minority class
+              pr<-negPredValue(table(pred, actual))
+              # pr<-precision(table(pred, actual ))
+              # rec<- recall(table(pred, actual))
+              # i actually want specificity for recall of minority class
+              rec<- specificity(table(pred, actual))
+              F1<- 2 * pr * rec /(pr + rec)
+              return(F1)
+              })
+   #
+    # print(results)
+    value<-mean(unlist(results))
+    print(value)
+    # print the average of the 10 F1 results for test set
+```
+
+## NEURAL NET - model 6
+ 
+Positive: can be used for classification or numeric prediction, makes few assumptions about the data (doesnt have to be normalized).
+Negative: SLOW..can overfit, 'black box'.
+
+```{r}
+# #1: The final parameter values used for the model were size = 16 and decay = 0.1.
+# Size is the number of units in hidden layer (nnet fit a single hidden layer neural network) and 
+# decay is the regularization parameter to avoid over-fitting.
+require(mlbench)
+require(caret)
+require (nnet)
+nnctrl = trainControl(method="repeatedcv", number=10, repeats = 10, classProbs=TRUE, summaryFunction = twoClassSummary)
+# initially, create a grid list to find best parameters:
+# nn_grid = expand.grid(size=c(1,4,8,16),decay=c(0,0.1,0.2,0.3,0.4))
+nn_grid = expand.grid(size=16, decay=0.1)
+nn_mod <- train(x=x, y=y, method="nnet", metric="ROC", trControl=nnctrl, tuneGrid=nn_grid, trace=FALSE)
+nn_pred<- predict(nn_mod, test_noy)
+# Testing the result output
+s<-table( nn_pred, test_labels)
+# Confusion matrix
+print(confusionMatrix(s))
+```
+
+### we can now run 10-fold on test dataset:
+
+```{r}
+# copy in files you need and use test dataset only 
+banking<-BM_test
+
+# the other way is to run 10-fold on the test dataset and take the average of the (10 times) F1 measure 
+folds<- createFolds(banking$y, k=10)
+    # create a function to do 10 folds of the data and run the statistics...
+    results <- lapply(folds, function(x) {
+              test<- banking[x,]
+              pred<- predict(nn_mod, test[-17])
+              actual<- test$y
+              # PPV = TP/(TP+FP)
+              # pos<-posPredValue(table(pred, actual))
+              # I actually want: NPV= TN/(TN+FN) for precision of minority class
+              pr<-negPredValue(table(pred, actual))
+              # pr<-precision(table(pred, actual ))
+              # rec<- recall(table(pred, actual))
+              # i actually want specificity for recall of minority class
+              rec<- specificity(table(pred, actual))
+              F1<- 2 * pr * rec /(pr + rec)
+              return(F1)
+              })
+   #
+    # print(results)
+    value<-mean(unlist(results))
+    print(value)
+    # print the average of the 10 F1 results for test set
+```
+
+## SVM model 7 - using caret package and linear kernel. 
+
+### Another supervised learning model. A SVM can be imagined as a surface thatc reates a boundary between points of data plotted in an n-space representing examples and their feature values. SVM creates a flat boundary called a hyperplane, which divides the space into homogeneous partitions on either side. This way, SVM combines nearest neighbour instance-based learning with linear regression modeling.
+
+negatives: need to test various parameters and kernels to get best solution, can be slow, 'black box".
+positives: good for binary classification, classification/numeric prediction
+
+
+```{r}
+# Linear (vanilla) kernel function. 
+# The final values used for the model were Cost = 1 for classification.
+library(caret)
+library(kernlab)
+fitctrl<- trainControl(method="repeatedcv", number = 10, repeats = 10, classProbs=TRUE, summaryFunction = twoClassSummary)
+grid<-expand.grid(C=1)
+sv_m<- train(y~., data=trainsv, method="svmLinear", metric="ROC", trControl=fitctrl, tunegrid=grid, verbose=FALSE)
+sp<- predict(sv_m, test_noy)
+s<-table( sp, test_labels)
+# Confusion matrix
+print(confusionMatrix(s))
+```
+
+### we can now run 10-fold on test dataset:
+
+```{r}
+# copy in files you need and use test dataset only 
+banking<-BM_test
+
+# the other way is to run 10-fold on the test dataset and take the average of the (10 times) F1 measure 
+folds<- createFolds(banking$y, k=10)
+    # create a function to do 10 folds of the data and run the statistics...
+    results <- lapply(folds, function(x) {
+              test<- banking[x,]
+              pred<- predict(sv_m, test[-17])
+              actual<- test$y
+              # PPV = TP/(TP+FP)
+              # pos<-posPredValue(table(pred, actual))
+              # I actually want: NPV= TN/(TN+FN) for precision of minority class
+              pr<-negPredValue(table(pred, actual))
+              # pr<-precision(table(pred, actual ))
+              # rec<- recall(table(pred, actual))
+              # i actually want specificity for recall of minority class
+              rec<- specificity(table(pred, actual))
+              F1<- 2 * pr * rec /(pr + rec)
+              return(F1)
+              })
+   #
+    # print(results)
+    value<-mean(unlist(results))
+    print(value)
+    # print the average of the 10 F1 results for test set
+```
+
+## SEE MODEL COMPARISON
+
+```{r}
+# you must run all models first 
+# get ROC, Sens, Spec for each MODEL (these are BEFORE using 10x10 validation - so differences from values above)
+resamps <- resamples(list(Naiv=nab_mod, C50=c5_mod, JRip= JR_mod, logistic=log_mod, KNN=knn_mod, NNet=nn_mod, SVM = sv_m  ))
+resamps
+summary(resamps)
+```
+
+### END

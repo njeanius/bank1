@@ -1,0 +1,326 @@
+---
+title: "Part 1 - data"
+author: "jean wills"
+date: "06/07/2020"
+output: word_document
+---
+
+## Project: Portuguese Bank Marketing Data
+
+# Step 1: read the data and look at the data structure
+
+```{r}
+# setwd("~/Users/jeanwills/Desktop/CKME136/")
+# BM <- read.csv("/Users/jeanwills/Desktop/CKME136/1_data/bank_full.csv", header=T, sep = ";", stringsAsFactors = T, na.strings = "NA")
+# look at the data structure 
+# since we are using the smaller file, we will do the statistics on the smaller file
+BM_mini <- read.csv("/Users/jeanwills/Desktop/CKME136/1_Data/bank.csv", header=T, sep = ";", stringsAsFactors = T, na.strings = "NA")
+# let's check number of complete cases for no data missing at all -> no missing data!
+BM<- BM_mini
+sum(complete.cases(BM))
+```
+
+# step 2 - Look at the bank data summary
+
+```{r}
+summary(BM)
+# we see that 7 attributes are numeric and the rest are now factors
+# we will come back to this and change the classes where required
+```
+
+# Step 3a: plot the boxplots of the numeric data
+
+```{r}
+# age has outliers above ~70
+par(mfrow=c(1,4))
+boxplot(BM$age, main = "Client's age")
+# balance has a large number of outliers above Q3
+boxplot(BM$balance, main = "Balance")
+# day has a large number of outliers above Q3
+boxplot(BM$day, main = "day called on")
+# duration has a large number of outliers above Q3
+boxplot(BM$duration, main = "call duration (sec)")
+```
+
+# Step 3b
+
+```{r}
+par(mfrow=c(1,3))
+# camapign has a large number of outliers above the Q3
+boxplot(BM$campaign, main = "Boxplot of campaign")
+# pdays has a VERY large number of outliers above Q3
+boxplot(BM$pdays, main = "Boxplot of pdays")
+# duration has a large number of outliers above Q3
+boxplot(BM$previous, main = "Boxplot of previous")
+```
+
+# Step 4a: plot histograms to reveal skewness / normality
+
+```{r}
+par(mfrow=c(1,4))
+# age looks skewed right
+hist(BM$age, main = "Hist - Age", breaks = 5)
+# balance is skewed right
+hist(BM$balance, main = "Hist - Balance", breaks = 5)
+# day somewhat skewed right
+hist(BM$day, main = "Hist - day", breaks = 10)
+# duration is skewed right
+hist(BM$duration, main = "Hist - call duration", breaks = 5)
+```
+
+# Step 4b: plot histograms to reveal skewness / normality
+
+```{r}
+par(mfrow=c(1,3))
+# campaign is skewed right - most data is in 1 day
+hist(BM$campaign, main = "Histogram of campaign", breaks = 5)
+# pdays skewed right
+hist(BM$pdays, main = "Histogram of pdays", breaks = 5)
+# previous skewed right
+hist(BM$previous, main = "Histogram of previous", breaks = 5)
+```
+
+# 4c logs of the numeric data and replot the histograms...
+
+probably won't use this as some data is negative and <1 and doing log(data) does NOT work for them but keep for now
+
+```{r}
+# NaNs produced.....need # >1.0 - balance and duration would need adjustments
+BM_log<-BM
+BM_log$age<-log(BM$age)
+# balance has negative values 
+BM_log$balance<-log(BM$balance)
+BM_log$day<-log(BM$day)
+# duration has zeros
+BM_log$duration<-log(BM$duration)
+#
+par(mfrow=c(1,4))
+hist(BM_log$age, main = "log(Age)", breaks = 5)
+hist(BM_log$balance, main = "log(Balance)", breaks = 5)
+hist(BM_log$day, main = "log(Day)", breaks = 5)
+hist(BM_log$duration, main = "log(call duration)", breaks = 10)
+```
+
+# 4d logs of the numeric data and replot the histograms...
+
+```{r}
+# NaNs produced.....need # >1.0 - pdays and previous would need adjustments
+BM_log$campaign<-log(BM$campaign)
+# pdays has -1
+BM_log$pdays<-log(BM$pdays)
+# previous has 0 and 1
+BM_log$previous<-log(BM$previous)
+# str(BM_log)
+par(mfrow=c(1,3))
+hist(BM_log$campaign, main = "log(campaign)", breaks = 5)
+hist(BM_log$pdays, main = "log(pdays)", breaks = 5)
+hist(BM_log$previous, main = "log(previous)", breaks = 5)
+# most seem normal except campaign is still right skewed
+```
+
+The logs work for most of the data but not all.....so leaving data as is
+
+# Step 5a: Q-Q plots
+
+```{r}
+par(mfrow=c(1,2))
+qqnorm(BM$age, main = "Norm Q-Q plot of Age")
+qqline(BM$age)
+qqnorm(BM$balance, main = "Norm Q-Q plot of balance")
+qqline(BM$balance)
+# both not normal
+```
+
+# Step 5b: Q-Q plots
+
+```{r}
+par(mfrow=c(1,2))
+qqnorm(BM$day, main = "Norm Q-Q plot of day")
+qqline(BM$day)
+qqnorm(BM$duration, main = "Norm Q-Q plot of duration")
+qqline(BM$duration)
+# both not normal
+```
+
+# Step 5c: Q-Q plots
+
+```{r}
+par(mfrow=c(1,3))
+qqnorm(BM$campaign, main = "Norm Q-Q plot of campaign")
+qqline(BM$campaign)
+qqnorm(BM$pdays, main = "Norm Q-Q plot of pdays")
+qqline(BM$pdays)
+qqnorm(BM$previous, main = "Norm Q-Q plot of previous")
+qqline(BM$previous)
+# all 3 not normal
+```
+
+# Step 6: Shapiro Tests for Normality on numeric data
+
+```{r}
+# IF p<0.05 then the numeric data is not normal and significant. 
+# Shapiro requires dataset size under 5,000.
+# All numeric attributes are NOT normal
+shapiro.test(BM_mini$age)
+shapiro.test(BM_mini$balance)
+shapiro.test(BM_mini$day)
+shapiro.test(BM_mini$duration)
+shapiro.test(BM_mini$campaign)
+shapiro.test(BM_mini$pdays)
+shapiro.test(BM_mini$previous)
+```
+
+# Step 7a: test for correlations within the numeric attributes
+
+```{r}
+# Since we know the numeric data is not-normal, we use Spearman instead of Pearson method
+# The correlation heat map is created
+# Pearson method is default and p>0.05 means NOT correlated
+# Spearman method - if p<0.05 means NOT correlated
+
+# if p<0.05 then significant meaning correlated
+# simple example with 2 variables
+# if we do this, we need y as numeric 0/1
+cor.test(BM$previous,BM$age, method="spearman")
+cor.test(BM$previous,BM$age)
+# also: cor(BM$previous,BM$age)
+```
+
+# Step 7b: Table of correlations for all data
+
+```{r}
+# Correlation test can also be considered a Feature Removal method
+# test ALL data for correlations
+library(lattice)
+library(ggplot2)
+BM_num<-BM
+# num<- subset(BM_01, select = c("age", "balance", "day", "duration", "campaign", "pdays", "previous", "y"))
+BM_num$job<- as.numeric(BM_num$job)  #12
+BM_num$marital<- as.numeric(BM_num$marital) #4
+BM_num$education<- as.numeric(BM_num$education) #4
+BM_num$default<- as.numeric(BM_num$default) #2
+BM_num$housing<- as.numeric(BM_num$housing)  #2
+BM_num$loan<- as.numeric(BM_num$loan)  #2
+BM_num$contact<- as.numeric(BM_num$contact) #3
+BM_num$month<- as.numeric(BM_num$month)  #12
+BM_num$poutcome<- as.numeric(BM_num$poutcome)  #4
+# correlations data 
+# Identify highly correlated features in caret r package
+# ensure the results are repeatable
+set.seed(12)
+library(mlbench)
+library(caret)
+# leaving out y so only 16 not 17
+corMatrix<-cor(BM_num[, c(1:16)])
+print(corMatrix)
+highCorr <- findCorrelation(corMatrix, cutoff=0.5)
+print(highCorr)
+```
+
+# Step 7c: do a correlation heat map to visualize the data
+
+## to do this, create all numeric data first (copied from Part 2):
+
+```{r}
+BM_n <- BM
+BM_n$job<- as.numeric(BM_n$job)  #12
+# marital: 1-single, 2-married, 3-divorced
+BM_n$marital<- ifelse(BM_n$marital == c("single"), 1, 
+                        ifelse(BM_n$marital== c("married"), 2, 3))
+# education: 0:unknown, 1: primary, 2:secondary, 3:divorced
+BM_n$education<- ifelse(BM_n$education == c("unknown"), 0, 
+                          ifelse(BM_n$education == c("primary"), 1, 
+                                 ifelse(BM_n$education == c("secondary"), 2, 3)))
+# default, housing, loan: if yes then 0 else 1
+# BM_num$housing<- as.numeric(BM_num$housing)  #2
+BM_n$default<- ifelse(BM_n$default == c("yes"), 0, 1) #2
+BM_n$housing<- ifelse(BM_n$housing == c("yes"), 0, 1) #2
+BM_n$loan<- ifelse(BM_n$loan == c("yes"), 0, 1) #2
+BM_n$contact<- as.numeric(BM_n$contact) #3
+# month: jan:1, feb:2.....dec:12
+BM_n$month<- ifelse(BM_n$month == "jan", 1, 
+                     ifelse(BM_n$month == "feb", 2, 
+                            ifelse(BM_n$month == "mar", 3,
+                                   ifelse(BM_n$month == "apr", 4, 
+                                          ifelse(BM_n$month == "may", 5, 
+                                                 ifelse(BM_n$month == "jun", 6,
+                                                        ifelse(BM_n$month == "jul", 7,
+                      ifelse(BM_n$month == "aug", 8,
+                            ifelse(BM_n$month == "sep", 9,
+                                   ifelse(BM_n$month == "oct", 10,
+                                          ifelse(BM_n$month == "nov", 11, 12)))))))))))
+# poutcome: 0:unknown,other, 1:failure, 2: success
+BM_n$poutcome<- ifelse(BM_n$poutcome == c("failure"), 1, ifelse(BM_n$poutcome== c("success"), 2, 0))  
+# result: BM_num with only numeric data (NOT scaled)
+# extra step for BM_mini
+BM_num<-BM_n
+rm(BM_n)
+```
+
+# Step 7c: do a correlation heat map to visualize the data
+
+```{r}
+library(plyr)
+library(GGally)
+library(ggplot2)
+library(reshape2)
+library(caret)
+# BM_num was created above
+# leaving out y so only 16 not 17
+# this one prints extra info -  ggpairs(BM_num[, c(1,16)])
+# require(scales)
+bnk_core<- cor(BM_num[, c(1:16)])
+bnk_melt<- melt(bnk_core, varnames=c("x", "y"),value.name="Correlation")
+# summarize the correlation matrix
+highlyCorrelated <- findCorrelation(bnk_core, cutoff=0.5)
+# print indexes of highly correlated attributes
+ggplot(bnk_melt, aes(x=x, y=y)) +
+  geom_tile(aes(fill=Correlation)) + 
+  scale_fill_gradient2(low="blue", mid="white", high="red", guide=guide_colorbar(ticks=FALSE, barheight=10),limits=c(-1,1)) +
+  theme_minimal() +
+  labs(x=NULL, y=NULL)
+```
+
+# Step 7d: scatterplot matrix of the numeric data - (this takes a bit of time)
+
+```{r}
+# BM_num created above 
+library(psych)
+# pairs works too
+# top right part shows correlations, diagonal shows histograms, and bottom left shows the
+# scatterplots, with the circles showing strength of correlation (circle~little, oval~lot)
+# took out y in the end
+pairs.panels(BM[c("age","balance","day","duration","campaign","pdays","previous")])
+```
+
+# Step 8a: Pearson chi-sq test for correlations of non-numeric data
+
+This is a sample of what could be done if we did not do the heat map above
+
+```{r}
+#Also:
+#chisq.test(table(BM$job, BM$marital))$expected
+#and $expected shows what the results should look like if true under null hypothesis
+
+# test for one attribute at a time against all the others for correlation
+# if p<0.05 then not significant 
+chisq.test(BM$job, BM$marital)
+chisq.test(BM$job, BM$education)
+# all p-values ~ zero - none significant
+```
+
+# Step 8b: Pearson chi-sq test for correlations of categorical data to the target variable
+
+```{r}
+chisq.test(BM$y, BM$job)
+chisq.test(BM$y, BM$marital)
+chisq.test(BM$y, BM$education)
+chisq.test(BM$y, BM$housing)
+chisq.test(BM$y, BM$loan)
+chisq.test(BM$y, BM$contact)
+chisq.test(BM$y, BM$month)
+chisq.test(BM$y, BM$poutcome)
+# all p-values ~ zero - this is not good! we want correlation!!
+# this means that it may be difficult to get meaningful answers!
+```
+
