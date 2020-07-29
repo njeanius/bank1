@@ -5,11 +5,9 @@ date: "13/07/2020"
 output: word_document
 ---
 
-
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE, message=FALSE, warning=FALSE)
 ```
-
 
 # step 1a - need to get to "BM_mini_sc" (added 95% CI + numeric scaled) 
 
@@ -127,23 +125,24 @@ set.seed(30)
 BM_train_index <- sample(nrow(BM), 0.7 * nrow(BM))
 BM_train<- BM[BM_train_index, ]
 BM_test <- BM[-BM_train_index, ]
-BM_train_labels <- BM[BM_train_index, 17]
-BM_test_labels <- BM[-BM_train_index, 17]
+# BM_train_labels <- BM[BM_train_index, 17]
+# BM_test_labels <- BM[-BM_train_index, 17]
 # note that we only balance the training sets
 # and leave test set as is.
 ```
 
 # step 3a - run SPECIFIC Balancing step to get balanced data version:
 
-## for unbalanced, rename the files to make it easy....
+## for unbalanced, rename the files to make it easy....chnage -17 to -49
 
 ```{r}
+# summary(BM_mini_dm)
 table(BM_train$y) 
-x=BM_train[,-17]
+x=BM_train[,-49]
 trainsv=BM_train
 train=BM_train
 y=BM_train$y
-test_noy=BM_test[,-17]
+test_noy=BM_test[,-49]
 test_labels=BM_test$y
 ```
 
@@ -181,7 +180,7 @@ folds<- createFolds(banking$y, k=10)
     # create a function to do 10 folds of the data and run the statistics...
     results <- lapply(folds, function(x) {
               test<- banking[x,]
-              pred<- predict(nab_mod, test[-17])
+              pred<- predict(nab_mod, test[-49])
               actual<- test$y
               # PPV = TP/(TP+FP)
               # pos<-posPredValue(table(pred, actual))
@@ -234,7 +233,7 @@ folds<- createFolds(banking$y, k=10)
     # create a function to do 10 folds of the data and run the statistics...
     results <- lapply(folds, function(x) {
               test<- banking[x,]
-              pred<- predict(c5_mod, test[-17])
+              pred<- predict(c5_mod, test[-49])
               actual<- test$y
               # PPV = TP/(TP+FP)
               # pos<-posPredValue(table(pred, actual))
@@ -293,7 +292,7 @@ folds<- createFolds(banking$y, k=10)
     # create a function to do 10 folds of the data and run the statistics...
     results <- lapply(folds, function(x) {
               test<- banking[x,]
-              pred<- predict(JR_mod, test[-17])
+              pred<- predict(JR_mod, test[-49])
               actual<- test$y
               # PPV = TP/(TP+FP)
               # pos<-posPredValue(table(pred, actual))
@@ -344,7 +343,7 @@ folds<- createFolds(banking$y, k=10)
     # create a function to do 10 folds of the data and run the statistics...
     results <- lapply(folds, function(x) {
               test<- banking[x,]
-              pred<- predict(log_mod, test[-17])
+              pred<- predict(log_mod, test[-49])
               actual<- test$y
               # PPV = TP/(TP+FP)
               # pos<-posPredValue(table(pred, actual))
@@ -411,7 +410,7 @@ folds<- createFolds(banking$y, k=10)
     # create a function to do 10 folds of the data and run the statistics...
     results <- lapply(folds, function(x) {
               test<- banking[x,]
-              pred<- predict(knn_mod, test[-17])
+              pred<- predict(knn_mod, test[-49])
               actual<- test$y
               # PPV = TP/(TP+FP)
               # pos<-posPredValue(table(pred, actual))
@@ -466,7 +465,7 @@ folds<- createFolds(banking$y, k=10)
     # create a function to do 10 folds of the data and run the statistics...
     results <- lapply(folds, function(x) {
               test<- banking[x,]
-              pred<- predict(nn_mod, test[-17])
+              pred<- predict(nn_mod, test[-49])
               actual<- test$y
               # PPV = TP/(TP+FP)
               # pos<-posPredValue(table(pred, actual))
@@ -519,7 +518,7 @@ folds<- createFolds(banking$y, k=10)
     # create a function to do 10 folds of the data and run the statistics...
     results <- lapply(folds, function(x) {
               test<- banking[x,]
-              pred<- predict(sv_m, test[-17])
+              pred<- predict(sv_m, test[-49])
               actual<- test$y
               # PPV = TP/(TP+FP)
               # pos<-posPredValue(table(pred, actual))
@@ -539,14 +538,5 @@ folds<- createFolds(banking$y, k=10)
     # print the average of the 10 F1 results for test set
 ```
 
-## SEE MODEL COMPARISON
-
-```{r}
-# you must run all models first 
-# get ROC, Sens, Spec for each MODEL (these are BEFORE using 10x10 validation - so differences from values above)
-resamps <- resamples(list(Naiv=nab_mod, C50=c5_mod, JRip= JR_mod, logistic=log_mod, KNN=knn_mod, NNet=nn_mod, SVM = sv_m  ))
-resamps
-summary(resamps)
-```
 
 ### END

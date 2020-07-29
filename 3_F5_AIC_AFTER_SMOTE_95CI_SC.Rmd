@@ -100,7 +100,6 @@ rm(BM)
 ```{r}
 
 temp<-BM_mini_sc
-rm(BM_mini_sc)
 
 # FS5: AIC step keep 10:  # 1, 4, 6, 7, 10, 11, 12, 13, 14, 16 +> delete 15,9,8,5,3,2
 temp<-BM_mini_sc
@@ -144,12 +143,12 @@ smote_train <- SMOTE(y ~ ., data  = BM_train)
 table(smote_train$y) 
 
 # now we name datasets that are used in models below 
-# *********- change y from 17 to ....
-x=smote_train[,-17]
+# *********- change y from 17 to 11....
+x=smote_train[,-11]
 trainsv=smote_train
 train=smote_train
 y=smote_train$y
-test_noy=BM_test[,-17]
+test_noy=BM_test[,-11]
 test_labels=BM_test$y
 
 ```
@@ -189,7 +188,7 @@ folds<- createFolds(banking$y, k=10)
     results <- lapply(folds, function(x) {
               test<- banking[x,]
               # *********- change y from 17 to ....
-              pred<- predict(nab_mod, test[-17])
+              pred<- predict(nab_mod, test[-11])
               actual<- test$y
               # PPV = TP/(TP+FP)
               # pos<-posPredValue(table(pred, actual))
@@ -243,7 +242,7 @@ folds<- createFolds(banking$y, k=10)
     results <- lapply(folds, function(x) {
               test<- banking[x,]
               # *********- change y from 17 to ....
-              pred<- predict(c5_mod, test[,-17])
+              pred<- predict(c5_mod, test[,-11])
               actual<- test$y
               # PPV = TP/(TP+FP)
               # pos<-posPredValue(table(pred, actual))
@@ -303,7 +302,7 @@ folds<- createFolds(banking$y, k=10)
     results <- lapply(folds, function(x) {
               test<- banking[x,]
               # *********- change y from 17 to ....
-              pred<- predict(JR_mod, test[-17])
+              pred<- predict(JR_mod, test[-11])
               actual<- test$y
               # PPV = TP/(TP+FP)
               # pos<-posPredValue(table(pred, actual))
@@ -355,7 +354,7 @@ folds<- createFolds(banking$y, k=10)
     results <- lapply(folds, function(x) {
               test<- banking[x,]
               # *********- change y from 17 to ....
-              pred<- predict(log_mod, test[-17])
+              pred<- predict(log_mod, test[-11])
               actual<- test$y
               # PPV = TP/(TP+FP)
               # pos<-posPredValue(table(pred, actual))
@@ -423,7 +422,7 @@ folds<- createFolds(banking$y, k=10)
     results <- lapply(folds, function(x) {
               test<- banking[x,]
               # *********- change y from 17 to ....
-              pred<- predict(knn_mod, test[-17])
+              pred<- predict(knn_mod, test[-11])
               actual<- test$y
               # PPV = TP/(TP+FP)
               # pos<-posPredValue(table(pred, actual))
@@ -479,7 +478,7 @@ folds<- createFolds(banking$y, k=10)
     results <- lapply(folds, function(x) {
               test<- banking[x,]
               # *********- change y from 17 to ....
-              pred<- predict(nn_mod, test[-17])
+              pred<- predict(nn_mod, test[-11])
               actual<- test$y
               # PPV = TP/(TP+FP)
               # pos<-posPredValue(table(pred, actual))
@@ -533,7 +532,7 @@ folds<- createFolds(banking$y, k=10)
     results <- lapply(folds, function(x) {
               test<- banking[x,]
               # *********- change y from 17 to ....
-              pred<- predict(sv_m, test[-17])
+              pred<- predict(sv_m, test[-11])
               actual<- test$y
               # PPV = TP/(TP+FP)
               # pos<-posPredValue(table(pred, actual))
