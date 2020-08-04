@@ -1,0 +1,215 @@
+---
+title: "Untitled"
+author: "jean wills"
+date: "29/07/2020"
+output: word_document
+---
+
+
+# Step 3 - Feature Selection Methods
+Note that these models are NOT being tested for metrics, but rather as a 'one-off" to see if we can reduce the number of attributes
+
+### 1: PCA
+### 2. Recursive feature elimination (RFE) with Random Forest
+### 3. Boruta 
+### 4. neural network LVQ method
+### 5. Regression - ANOVA, AIC
+### 6. Regression - AIC stepwise
+
+## this file uses "BM_mini_num_sc"
+
+## Get the data in the proper format first:
+
+### read in dataset - on "BM_mini"
+
+```{r}
+library(plyr)
+library(dplyr)
+BM_mini <- read.csv("/Users/jeanwills/Desktop/CKME136/1_data/bank.csv", header=T, sep = ";", stringsAsFactors = T, na.strings = "NA")
+```
+
+### NUMERIC DATA Cleaning - change numeric data to 95% CI 
+
+```{r}
+BM<-BM_mini
+
+Lq_bal<- quantile(BM$balance, probs=c(0.025))
+Hq_bal<- quantile(BM$balance, probs=c(0.975))
+Lq_dur<- quantile(BM$duration, probs=c(0.025))
+Hq_dur<- quantile(BM$duration, probs=c(0.975))
+Lq_cam<- quantile(BM$campaign, probs=c(0.025))
+Hq_cam<- quantile(BM$campaign, probs=c(0.975))
+Lq_days<- quantile(BM$pdays, probs=c(0.025))
+Hq_days<- quantile(BM$pdays, probs=c(0.975))
+Lq_prv<- quantile(BM$previous, probs=c(0.025))
+Hq_prv<- quantile(BM$previous, probs=c(0.975))
+BM$balance[BM$balance < Lq_bal] <- Lq_bal
+BM$balance[BM$balance > Hq_bal] <- Hq_bal
+BM$duration[BM$duration < Lq_dur] <- Lq_dur
+BM$duration[BM$duration > Hq_dur] <- Hq_dur
+BM$campaign[BM$campaign < Lq_cam] <- Lq_cam
+BM$campaign[BM$campaign > Hq_cam] <- Hq_cam
+BM$pdays[BM$pdays < Lq_days] <- Lq_days
+BM$pdays[BM$pdays > Hq_days] <- Hq_days
+BM$previous[BM$previous < Lq_prv] <- Lq_prv
+BM$previous[BM$previous > Hq_prv] <- Hq_prv
+
+# now have file BM ...
+```
+
+### now make minor adjsutments
+
+```{r}
+# switch -1 -> 0 in 'pdays'
+BM$pdays<- ifelse(BM$pdays == -1, 0, BM$pdays)
+# switch duration in seconds to minutes for easier use
+BM$duration<- BM$duration/60
+```
+
+### now switch categorical to get numeric - RESULT is "BM_mini_num"
+
+```{r}
+# numeric still NOT normalized/scaled, 
+# actually ALL DATA not normalized/scaled EXCEPT default, housing, loan
+BM_n <- BM
+BM_n$job<- as.numeric(BM_n$job)  #12
+# marital: 1-single, 2-married, 3-divorced
+BM_n$marital<- ifelse(BM_n$marital == c("single"), 1, 
+                        ifelse(BM_n$marital== c("married"), 2, 3))
+# education: 0:unknown, 1: primary, 2:secondary, 3:divorced
+BM_n$education<- ifelse(BM_n$education == c("unknown"), 0, 
+                          ifelse(BM_n$education == c("primary"), 1, 
+                                 ifelse(BM_n$education == c("secondary"), 2, 3)))
+# default, housing, loan: if yes then 0 else 1
+# BM_num$housing<- as.numeric(BM_num$housing)  #2
+BM_n$default<- ifelse(BM_n$default == c("yes"), 0, 1) #2
+BM_n$housing<- ifelse(BM_n$housing == c("yes"), 0, 1) #2
+BM_n$loan<- ifelse(BM_n$loan == c("yes"), 0, 1) #2
+BM_n$contact<- as.numeric(BM_n$contact) #3
+# month: jan:1, feb:2.....dec:12
+BM_n$month<- ifelse(BM_n$month == "jan", 1, 
+                     ifelse(BM_n$month == "feb", 2, 
+                            ifelse(BM_n$month == "mar", 3,
+                                   ifelse(BM_n$month == "apr", 4, 
+                                          ifelse(BM_n$month == "may", 5, 
+                                                 ifelse(BM_n$month == "jun", 6,
+                                                        ifelse(BM_n$month == "jul", 7,
+                      ifelse(BM_n$month == "aug", 8,
+                            ifelse(BM_n$month == "sep", 9,
+                                   ifelse(BM_n$month == "oct", 10,
+                                          ifelse(BM_n$month == "nov", 11, 12)))))))))))
+# poutcome: 0:unknown,other, 1:failure, 2: success
+BM_n$poutcome<- ifelse(BM_n$poutcome == c("failure"), 1, ifelse(BM_n$poutcome== c("success"), 2, 0))  
+# result: BM_num with only numeric data (NOT scaled)
+# extra step for BM_mini
+#  BM_n
+
+```
+
+#
+### scale only original numeric data 
+
+
+
+```{r}
+# KEEP: age-1, balance-6, day-10, duration-12, campaign-13, pdays-14, previous-15
+BMS<- BM_n
+# BMS<-BM_mini
+normalize<- function(x) {
+  return ((x - min(x)) / (max(x) - min(x)))
+}
+BM_s<- as.data.frame(lapply(BMS[,c(1,6,10,12:15)], normalize))
+# now recombine dataframes with the nominal components
+BM_s$job<-BMS$job
+BM_s$marital<-BMS$marital
+BM_s$education<-BMS$education
+BM_s$default<-BMS$default
+BM_s$housing<-BMS$housing
+BM_s$loan<-BMS$loan
+BM_s$contact<-BMS$contact
+BM_s$month<-BMS$month
+BM_s$poutcome<-BMS$poutcome
+BM_s$y<-BMS$y
+# convert
+BM_mini_sc<-BM_s
+# result used BM_num file but now BM_num_scale with normalized numeric data
+# and y is factor
+# to convert y to numeric use next line
+# BM_scale$y<- ifelse(BM_scale$y==c("yes"), 1, 0)
+rm(BMS)
+rm(BM_s)
+rm(BM)
+rm(BM_n)
+```
+
+
+## we are using SMOTE since it was found to be better so data will be rebalanced with SMOTE first
+
+# step 2 - run training and test datasets FOR ALL CONFIGURATIONS
+
+```{r}
+# str(BM_mini_sc)
+# rename datasets
+BM<-BM_mini_sc
+set.seed(30)
+# get train and test datasets
+# note that if we use cross validation, we can use the complete dataset for training or keep a portion for validation after
+#
+BM_train_index <- sample(nrow(BM), 0.7 * nrow(BM))
+BM_train<- BM[BM_train_index, ]
+BM_test <- BM[-BM_train_index, ]
+BM_train_labels <- BM[BM_train_index, 17]
+BM_test_labels <- BM[-BM_train_index, 17]
+# note that we only balance the training sets
+# and leave test set as is.
+```
+
+# step 3a - run SPECIFIC Balancing step to get balanced data version:
+
+## SMOTE SAMPLE MAJOR/MINOR -  each for training
+
+```{r}
+# install.packages("DMwR")
+library(DMwR)
+library(grid)
+# this one is slow
+set.seed(50)
+smote_train <- SMOTE(y ~ ., data  = BM_train)                         
+table(smote_train$y) 
+
+# now we name datasets that are used in models below
+train=smote_train
+
+BMX<- smote_train
+data<- smote_train
+RFEdata<-smote_train
+BMX<-smote_train
+dataset<- smote_train
+# train<- smote_train
+pca_trainset = smote_train 
+BMY<- smote_train
+```
+
+
+###  #2  Recursive Feature Elimination with Random Forest
+
+Recursive feature elimination (RFE) is a feature selection method that fits a model and removes the weakest feature (or features) until the specified number of features is reached. A Random Forest algorithm is used on each iteration to evaluate the model. Method = cross-validation, number=10-fold, repeated 10 times.
+
+
+```{r}
+set.seed(7)
+library(mlbench)
+library(caret)
+# library(lattice)
+# library(ggplot2)
+# define the control using a random forest selection function rfFuncs
+control <- rfeControl(functions=rfFuncs, method="repeatedcv", number=10, repeats=10)
+# run the RFE algorithm
+results <- rfe(RFEdata[,1:16], RFEdata[,17], sizes=c(1:16), rfeControl=control)
+# summarize the results
+print(results)
+# list the chosen features
+predictors(results)
+# plot the results
+plot(results, type=c("g", "o"))
+```

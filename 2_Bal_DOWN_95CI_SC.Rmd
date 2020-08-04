@@ -5,10 +5,9 @@ date: "13/07/2020"
 output: word_document
 ---
 
-```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE, message=FALSE, warning=FALSE)
+```{r}
+# knitr::opts_chunk$set(echo = TRUE, message=FALSE, warning=FALSE)
 ```
-
 
 # step 1a - need to get to "BM_mini_sc" (added 95% CI + numeric scaled) 
 
@@ -121,6 +120,7 @@ BM_test_labels <- BM[-BM_train_index, 17]
 
 ```{r}
 set.seed(30)
+library(caret)
 down_train <- downSample(x = BM_train[, -ncol(BM_train)], y = BM_train$y)
 table(down_train$Class)  
 
@@ -486,7 +486,7 @@ library(caret)
 library(kernlab)
 fitctrl<- trainControl(method="repeatedcv", number = 10, repeats = 10, classProbs=TRUE, summaryFunction = twoClassSummary)
 grid<-expand.grid(C=1)
-sv_m<- train(y~., data=trainsv, method="svmLinear", metric="ROC", trControl=fitctrl, tunegrid=grid, verbose=FALSE)
+sv_m<- train(Class~., data=trainsv, method="svmLinear", metric="ROC", trControl=fitctrl, tunegrid=grid, verbose=FALSE)
 sp<- predict(sv_m, test_noy)
 s<-table( sp, test_labels)
 # Confusion matrix
@@ -524,14 +524,3 @@ folds<- createFolds(banking$y, k=10)
     # print the average of the 10 F1 results for test set
 ```
 
-## SEE MODEL COMPARISON
-
-```{r}
-# you must run all models first 
-# get ROC, Sens, Spec for each MODEL (these are BEFORE using 10x10 validation - so differences from values above)
-resamps <- resamples(list(Naiv=nab_mod, C50=c5_mod, JRip= JR_mod, logistic=log_mod, KNN=knn_mod, NNet=nn_mod, SVM = sv_m  ))
-resamps
-summary(resamps)
-```
-
-### END
